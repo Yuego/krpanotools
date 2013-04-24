@@ -7,10 +7,11 @@ X-KDE-Priority=TopLevel
 X-KDE-Submenu=Krpano
 Encoding=UTF-8
 Icon=luna
+Name=Создать 3Д-тур из выделенных панорам
 
 [Desktop Action createTour]
-Exec=konsole -e /usr/bin/kmakemultires -config=$HOME/.krpano/templates/vtour-build.config %F
-Icon=pano
+Exec=konsole -e /opt/krpanotools/bin/kmakemultires -config=/opt/krpanotools/templates/default/vtour-build.config %F
+Icon=/opt/krpanotools/images/krpano.png
 Name[ru]=Создать тур
 Name=Создать тур
 Comment[ru]=Создать 3Д-тур из одной или нескольких панорам

@@ -1,0 +1,22 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=KonqPopupMenu/Plugin
+MimeType=application/xml;application/javascript;
+Actions=encrypt;encryptOW;
+X-KDE-Priority=TopLevel
+X-KDE-Submenu=Krpano
+Icon=luna
+Encoding=UTF-8
+Name=Шифрование xml
+
+[Desktop Action encrypt]
+Exec=konsole -e /opt/krpanotools/bin/kencrypt -h5 %F
+Icon=/opt/krpanotools/images/krpano-encrypt.png
+Name[ru]=Зашифровать
+Name=Encrypt
+
+[Desktop Action encryptOW]
+Exec=konsole -e /opt/krpanotools/bin/kencrypt -ow -h5 %F
+Icon=/opt/krpanotools/images/krpano-encrypt-ow.png
+Name[ru]=Зашифровать (с перезаписью)
+Name=Encrypt (owerwrite)

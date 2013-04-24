@@ -1,0 +1,15 @@
+[Desktop Action resize]
+Exec=/bin/sh -c "convert '%f' -resize 1024 '%f'; convert '%f' -modulate 100,140 '%f';"
+Icon=/opt/krpanotools/images/images.png
+Name[ru]=Превью
+Name=Resize
+
+[Desktop Entry]
+Actions=resize;
+Encoding=UTF-8
+Icon=/opt/krpanotools/images/resize.png
+MimeType=image/tiff;image/png;image/jpeg;
+ServiceTypes=KonqPopupMenu/Plugin
+Type=Service
+X-KDE-Priority=TopLevel
+X-KDE-Submenu=ImageMagick
