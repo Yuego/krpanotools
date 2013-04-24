@@ -1,6 +1,7 @@
 
 krpano.license
 krpanotools.license
+krpanoiphone.license.js
 
 *.*~
 *.swp
@@ -9,3 +10,4 @@ Thumbs.db
 misc/
 bin/
 files/
+license/
