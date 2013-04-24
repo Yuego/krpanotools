@@ -1,0 +1,19 @@
+<krpano version="1.16" title="Virtual Tour" onstart="startup();">
+
+	<include url="vtourskin.xml" />
+
+	<!-- set skin settings: bingmaps? gyro? thumbnail controlling? tooltips? -->
+	<skin_settings bingmaps="[HAVEGPS]" />
+
+	<!-- set optional skin logo url -->
+	<layer name="skin_logo" url="" scale="0.25" opened_onclick="openurl('...',_blank);" />
+
+
+	<action name="startup">
+		if(startscene === null, copy(startscene,scene[0].name));
+		loadscene(get(startscene), null, MERGE);
+	</action>
+
+	[SCENES]
+
+</krpano>

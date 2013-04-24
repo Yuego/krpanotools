@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=KonqPopupMenu/Plugin
+MimeType=image/tiff;image/png;image/jpeg;
+Actions=createTour;
+X-KDE-Priority=TopLevel
+X-KDE-Submenu=Krpano
+Encoding=UTF-8
+Icon=luna
+
+[Desktop Action createTour]
+Exec=konsole -e /usr/bin/kmakemultires -config=$HOME/.krpano/templates/vtour-build.config %F
+Icon=pano
+Name[ru]=Создать тур
+Name=Создать тур
+Comment[ru]=Создать 3Д-тур из одной или нескольких панорам
+Comment=Создать 3Д-тур из одной или нескольких панорам

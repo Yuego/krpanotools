@@ -1,0 +1,11 @@
+
+krpano.license
+krpanotools.license
+
+*.*~
+*.swp
+Thumbs.db
+
+misc/
+bin/
+files/
