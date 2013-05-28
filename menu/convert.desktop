@@ -1,5 +1,5 @@
 [Desktop Action convert-dir]
-Exec=/opt/krpano/scripts/convert-dir
+Exec=/opt/krpanotools/scripts/convert-dir
 Name[ru]=Конвертировать папку
 Name=Convert Directory
 
