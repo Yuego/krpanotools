@@ -1,0 +1,13 @@
+[Desktop Action convert-dir]
+Exec=/opt/krpano/scripts/convert-dir
+Name[ru]=Конвертировать папку
+Name=Convert Directory
+
+[Desktop Entry]
+Actions=convert-dir;
+Encoding=UTF-8
+MimeType=inode/directory;x-directory/normal;
+ServiceTypes=KonqPopupMenu/Plugin
+Type=Service
+X-KDE-Priority=TopLevel
+X-KDE-Submenu=ImageMagick

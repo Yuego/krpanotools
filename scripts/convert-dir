@@ -1,0 +1,104 @@
+#!/bin/sh
+
+SELF=`basename $0`
+DIR=""
+
+dbusRef=""
+declare -a _failed
+error=0
+
+displayHelp() {
+    echo "Конвертирует все CR2 из каталога в TIFF"
+    echo
+    echo "Usage: $SELF [OPTION] DIR"
+    
+    echo -e "  -h\t\tThis help"
+    echo
+    echo "Report bugs to <root@proscript.ru>"
+}
+
+convertFile() {
+    extension=$1
+    orig_file=$2
+    new_file=$3
+    error=0
+    
+    convert $extension:"${orig_file}" "${new_file}" > /dev/null 2>&1
+    error=$?
+    if [ $error = 0 ]; then
+        exiftool -overwrite_original -x Orientation -x Compression -tagsFromFile "${orig_file}" -EXIF:All --IFD1:All -IPTC:All "${new_file}" > /dev/null 2>&1
+    fi
+}
+
+while getopts h arg
+do
+    case $arg in
+        h) displayHelp;exit;;
+    esac
+done
+
+shift $((OPTIND-1))
+DIR=$1
+
+if [ -z $DIR ]; then
+    displayHelp
+    exit
+fi
+
+if [ ! -d "$DIR" ]; then
+    echo "$DIR is not a valid directory"
+    displayHelp
+    exit
+fi
+DIR=$(cd "$DIR" && pwd) #transform to absolute path
+
+JPG_DIR="$DIR/jpg"
+TIF_DIR="$DIR/tif"
+FAILED_DIR="$DIR/fail"
+
+cr_count=`ls "$DIR"/*.CR2 | wc -l`
+fail_count=0
+
+dbusRef=`kdialog --title "Convert RAW Images" --caption "HDR-Tools" --progressbar "Initialising" $cr_count`
+
+qdbus $dbusRef setLabelText "Moving JPG's"
+
+if [ ! -d "$JPG_DIR" ]; then
+    mkdir "$JPG_DIR"
+fi
+if [ ! -d "$TIF_DIR" ]; then
+    mkdir "$TIF_DIR"
+fi
+
+mv "$DIR"/*.JPG "$DIR"/jpg/ > /dev/null 2>&1
+
+qdbus $dbusRef setLabelText "Converting..."
+
+counter=0
+converted=0
+for f in `ls "$DIR"/*.CR2`; do
+    filename=`basename "$f"`
+    old_file="$f"
+    
+    counter=$(($counter+1))
+    qdbus $dbusRef setLabelText "Converting image: $old_file"
+    qdbus $dbusRef Set "" "value" $counter
+    
+    new_file="$TIF_DIR/${filename/CR2/tif}"
+    convertFile "CR2" "$old_file" "$new_file"
+    
+    if [ ! $error -eq 0 ]; then
+        if [ ! -d "$FAILED_DIR" ]; then
+            mkdir "$FAILED_DIR"
+        fi
+    
+        _failed=( "${failed[@]}" "$filename" )
+        fail_count=$(($fail_count+1))
+        mv "$old_file" "$FAILED_DIR"
+    else
+        converted=$(($converted+1))
+    fi
+done
+
+qdbus $dbusRef close
+kdialog --passivepopup "Конвертация завершена.\nКаталог: ${DIR}\nВсего RAW-файлов: ${cr_count}\nСконвертировано: ${converted}\nОшибок: ${fail_count}"
