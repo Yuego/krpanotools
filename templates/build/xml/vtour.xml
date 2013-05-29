@@ -1,6 +1,6 @@
 <krpano version="1.16" title="Virtual Tour" onstart="startup();">
 
-	<include url="vtourskin.xml" />
+    <include url="/krpano/skin/default/vtourskin.xml" />
 
 	<!-- set skin settings: bingmaps? gyro? thumbnail controlling? tooltips? -->
 	<skin_settings bingmaps="[HAVEGPS]" />

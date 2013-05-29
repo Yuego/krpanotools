@@ -1,0 +1,5 @@
+
+xmltemplate=xml/vtour.xml
+xmltemplate_scene=xml/vtour_scenetemplate.xml
+xmltemplate_view=xml/vtour_viewtemplate.xml
+xmltemplate_hotspot=xml/vtour_hotspottemplate.xml
