@@ -120,12 +120,12 @@ convertDirectory() {
         local core=0
         while [ $core -lt $cores_count ]; do
             echo "Core: $core; Image: ${images[$index]}; "
-            convertFile "${images[$index]}" 
+            convertFile "${images[$index]}" &
             let "core = $core + 1"
             let "index = $index + 1"
         done
         #echo -e ":::Wait... "
-        #wait
+        wait
         #echo "OK"
     done
 }
