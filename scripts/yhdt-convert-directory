@@ -141,4 +141,4 @@ else
 fi
 
 # И сразу сведем брекетинг уже из TIFF`ов
-#"$BLEND_BRACKETED_BIN" "$TIF_DIR"
+"$BLEND_BRACKETED_BIN" "$TIF_DIR"
