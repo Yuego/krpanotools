@@ -44,7 +44,7 @@ walkDirs() {
         pid=`basename "$lf" | sed "s/^.*\.//ig"`
         #echo "PID: $pid"
         
-        process=`ps a | grep $pid | grep -v grep`
+        process=`ps -A | grep $pid | grep -v grep`
         #echo "Process: $Process"
         
         if [ ! -z "$process" ]; then
