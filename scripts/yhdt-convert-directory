@@ -1,0 +1,144 @@
+#!/bin/sh
+
+# Ищем файлы с расширением $extension в каталоге $DIR и конвертируем в TIFF
+ 
+SELF="`basename $0`"
+SELF_PATH="`dirname $0`"
+
+DIR="$1"
+EXTENSION="$2"
+
+BLEND_BRACKETED_BIN="$SELF_PATH/yhdt-blend-bracketed"
+
+CONVERT=`which convert`
+EXIFTOOL=`which exiftool`
+
+cores_count=`grep -c ^processor /proc/cpuinfo`
+
+declare -a images
+declare -a _failed
+error=0
+failed_count=0
+converted_count=0
+counter=0
+
+if [ -z "$CONVERT" ]; then
+    echo "Для работы необходим ImageMagick"
+    exit
+fi
+
+if [ -z "$EXIFTOOL" ]; then
+    echo "Для работы необходим exiftool"
+    exit
+fi
+
+if [ -z "$DIR" ]; then
+    echo "Укажите каталог с файлами"
+    exit
+fi
+
+if [ ! -d "$DIR" ]; then
+    echo "$DIR не является директорией"
+    exit
+fi
+
+if [ -z "$EXTENSION" ]; then
+    echo "Укажите расширение файлов"
+    exit
+fi
+
+convertFile() {
+    local image=$1
+    
+    if [ -z "$image" ]; then
+        return
+    fi
+    
+    error=0
+    
+    local filename=`basename "$image"`
+    local old_file="$image"
+    local new_file="$TIF_DIR/"`echo $filename | sed "s/\..*/.tif/ig"`
+    counter=$(($counter+1))
+    
+    if [ ! -f "$DIR/._${filename}_converted" ]; then
+        echo -n -e "Конвертирую файл $filename...\t\t\t\t"
+        
+        convert $extension:"${old_file}" "${new_file}" > /dev/null 2>&1
+        error=$?
+        if [ $error = 0 ]; then
+            exiftool -overwrite_original -x Orientation -x Compression -tagsFromFile "${old_file}" -EXIF:All --IFD1:All -IPTC:All "${new_file}" > /dev/null 2>&1
+        fi
+    
+        if [ ! $error -eq 0 ]; then
+            if [ ! -d "$FAILED_DIR" ]; then
+                mkdir "$FAILED_DIR"
+            fi
+        
+            _failed=( "${failed[@]}" "$filename" )
+            fail_count=$(($fail_count+1))
+            mv "$old_file" "$FAILED_DIR"
+            echo 'ОШИБКА'
+        else
+            converted=$(($converted+1))
+            touch "$DIR/._${filename}_converted"
+            echo 'OK'
+        fi
+    else
+        echo "Файл $filename уже сконвертирован"
+    fi
+    
+    
+}
+
+DIR=$(cd "$DIR" && pwd) #transform to absolute path
+
+JPG_DIR="$DIR/jpg"
+TIF_DIR="$DIR/_tif"
+FAILED_DIR="$DIR/_failed"
+
+cr_count=`find "$DIR" -maxdepth 1 -type f -iname "*.$EXTENSION" -print | wc -l`
+
+
+convertDirectory() {
+    if [ ! -d "$JPG_DIR" ]; then
+        mkdir "$JPG_DIR"
+    fi
+    if [ ! -d "$TIF_DIR" ]; then
+        mkdir "$TIF_DIR"
+    fi
+
+    find "$DIR" -maxdepth 1 -type f -iname "*.jpg" -exec mv {} "$JPG_DIR" \;
+    
+    for image in `find "$DIR" -maxdepth 1 -type f -iname "*.$EXTENSION" -print | sort`; do
+        images=( "${images[@]}" "$image" )
+    done
+    
+    local index=0
+    while [ $index -lt $cr_count ]; do
+        echo "Index: $index::: "
+        local core=0
+        while [ $core -lt $cores_count ]; do
+            echo "Core: $core; Image: ${images[$index]}; "
+            convertFile "${images[$index]}" 
+            let "core = $core + 1"
+            let "index = $index + 1"
+        done
+        #echo -e ":::Wait... "
+        #wait
+        #echo "OK"
+    done
+}
+
+if [ -f "$DIR/._converted" ]; then
+    echo "Файлы в каталоге уже сконвертированы. Пропускаем."
+else
+    # Пропускаем каталоги, в которых нет CR2
+    if [ $cr_count -gt 0 ]; then
+        convertDirectory
+        touch "$DIR/._converted"
+    fi
+fi
+
+# И сразу сведем брекетинг уже из TIFF`ов
+#"$BLEND_BRACKETED_BIN" "$TIF_DIR"

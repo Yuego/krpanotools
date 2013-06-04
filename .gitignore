@@ -11,3 +11,6 @@ misc/
 bin/
 files/
 license/
+
+test
+tests.txt

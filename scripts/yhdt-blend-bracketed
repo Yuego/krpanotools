@@ -1,0 +1,179 @@
+#!/bin/sh
+
+# Сводим брекетинг
+ 
+SELF="`basename $0`"
+SELF_PATH="`dirname $0`"
+
+
+DIR="$1"
+
+ENFUSE=`which enfuse`
+EXIFTOOL=`which exiftool`
+
+QUIET=0
+VERBOSE=1
+DRYRUN=N
+
+if [ -z "$ENFUSE" ]; then
+    echo "Для работы необходим пакет enblend"
+    exit
+fi
+
+if [ -z "$EXIFTOOL" ]; then
+    echo "Для работы необходим exiftool"
+    exit
+fi
+
+if [ -z "$DIR" ]; then
+    echo "Укажите каталог с файлами"
+    exit
+fi
+
+if [ ! -d "$DIR" ]; then
+    echo "$DIR не является директорией"
+    exit
+fi
+
+DIR=$(cd "$DIR" && pwd) #transform to absolute path
+
+BLEND_DIR="$DIR/blend"
+BRACKETED_DIR="$DIR/bracketed"
+
+#if [ ! -d "$BRACKETED_DIR" ]; then
+#    mkdir "$BRACKETED_DIR"
+#fi
+
+blendTifFiles() {
+    echo "Enfuse $1 $2 $3 in '$DIR'"
+    
+    if [ ! -d "$BLEND_DIR" ]; then
+        mkdir "$BLEND_DIR"
+    fi
+    
+    blend_name=`basename $1 | sed "s/\..*//g"`
+    new_file="$DIR/blend/$blend_name.tif"
+    
+    enfuse -o "$new_file"  "$1" "$2" "$3"
+    
+    if [ $? -eq 0 ]; then
+        exiftool -overwrite_original -x Orientation -x Compression -tagsFromFile "$1" -EXIF:All --IFD1:All -IPTC:All "${new_file}" > /dev/null 2>&1
+    
+        echo "Done"
+    else
+        echo "Failed"
+    fi
+}
+
+# function processFileType() takes file extension as a param (case insensitive)
+processFileType() {
+    extension=$1
+    #if [ $USEKDE = 1 ]; then
+    #    qdbus $dbusRef setLabelText "Processing $extension files"
+    #    echo "Analyzing $extension files" >>$tmpfile
+    #fi
+    if [ $QUIET = 0 ]; then
+        echo "Analyzing $extension files"
+    fi
+    declare -a bracketed
+    for file in `find $DIR -maxdepth 1 -type f -iname "*.$extension" -print | sort`; do # find files with the right extension in specified directory and sort names
+        isbracketed="NO"
+        make=`exiftool -n -S -EXIF:Make $file | cut -d ' ' -f 2-` # retrieve make from EXIF
+        camera=`exiftool -n -S -EXIF:Model $file | cut -d ' ' -f 2-` # retrieve camera model from EXIF
+        if [ $VERBOSE = 1 ]; then
+            echo Camera make: $make        Camera model: $camera
+        fi
+        if [ $VERBOSE = 1 ]; then
+            echo -n "Checking if file `basename $file` is bracketed ... "
+        fi
+        if [ "$make" = "NIKON CORPORATION" -a "$camera" = "NIKON D90" ] || [ "$make" = "NIKON CORPORATION" -a "$camera" = "NIKON D50" ]; then
+            shootingMode=`exiftool -n -S -MakerNotes:ShootingMode $file | awk '{print $2}'` # retrieve shooting mode from MakerNotes
+            let "shootingMode = $shootingMode & 16"
+            if [ $shootingMode = 16 ]; then
+                bracketed=( "${bracketed[@]}" $file )
+                isbracketed="YES"
+            fi
+        elif [ "$make" = "Canon" -a "$camera" = "Canon EOS 50D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 7D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 60D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 550D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 5D Mark II" ]; then
+            bracketMode=`exiftool -n -S -MakerNotes:BracketMode $file | awk '{print $2}'` # retrieve Bracket mode from MakerNotes -- Added because EXIF:ExposureMode didn't work on files from Canon 50D
+            if [ $bracketMode = 1 ]; then
+                bracketed=( "${bracketed[@]}" $file )
+                isbracketed="YES"
+            fi
+        elif [ "$make" = "Canon" -a "$camera" = "Canon EOS 400D DIGITAL" ]; then
+            expoMode=`exiftool -n -S -EXIF:ExposureMode $file | awk '{print $2}'` # retrieve exposure mode from EXIF
+            if [ $expoMode = 2 ]; then # 2 is the value for Auto Bracketed, file should be looked at
+                bracketed=( "${bracketed[@]}" $file )
+                isbracketed="YES"
+            fi
+        fi
+        if [ $VERBOSE = 1 ]; then
+            echo $isbracketed
+        fi
+    done
+    element_count=${#bracketed[@]}
+    if [ $VERBOSE = 1 ]; then
+        echo "$element_count bracketed images found"
+    fi
+    index=0 # counter for looping in the array of files
+    while [ $index -lt  $(($element_count-2)) ];do # have to have at least 3 files left
+        image_number1=`basename ${bracketed[$index]} | sed "s/\..*//g" | sed "s/[^0-9]//g"` # retrieve image name without path and without extension
+        # make sure the file number sequence is continuous and that they belong to the same bracket
+        image_number2=`basename ${bracketed[$(($index+1))]} | sed "s/\..*//g" | sed "s/[^0-9]//g"`
+        image_number3=`basename ${bracketed[$(($index+2))]} | sed "s/\..*//g" | sed "s/[^0-9]//g"`
+        if [ $VERBOSE = 1 ]; then
+            echo -n "Checking if images $image_number1 $image_number2 $image_number3 go together ... "
+        fi
+        if [ $((10#$image_number2)) = $((10#$image_number1+1)) ] && [ $((10#$image_number3)) = $((10#$image_number1+2)) ]; then
+            if [ "$make" = "NIKON CORPORATION" -a "$camera" = "NIKON D90" ] || [ "$make" = "NIKON CORPORATION" -a "$camera" = "NIKON D50" ]; then
+                exp_comp1=`exiftool -n -S -MakerNotes:ExposureBracketValue ${bracketed[$index]} | awk '{print $2}'`
+                exp_comp2=`exiftool -n -S -MakerNotes:ExposureBracketValue ${bracketed[$(($index+1))]} | awk '{print $2}'`
+                exp_comp3=`exiftool -n -S -MakerNotes:ExposureBracketValue ${bracketed[$(($index+2))]} | awk '{print $2}'`
+            elif [ "$make" = "Canon" -a "$camera" = "Canon EOS 50D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 400D DIGITAL" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 7D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 60D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 550D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 5D Mark II" ]; then
+                exp_comp1=`exiftool -n -S -MakerNotes:AEBBracketValue ${bracketed[$index]} | awk '{print $2}'`
+                exp_comp2=`exiftool -n -S -MakerNotes:AEBBracketValue ${bracketed[$(($index+1))]} | awk '{print $2}'`
+                exp_comp3=`exiftool -n -S -MakerNotes:AEBBracketValue ${bracketed[$(($index+2))]} | awk '{print $2}'`
+            fi
+            if [ `echo "($exp_comp1 - $exp_comp2) == ($exp_comp3 - $exp_comp1)" | bc -q` = 1 ]; then
+                if [ $VERBOSE = 1 ]; then
+                    echo "YES"
+                fi
+                let "folderIndex = $folderIndex + 1" # increment folder index
+                #currentDir=$DIR/$extension/$DIRPREFIX$folderIndex
+                if [ $QUIET = 0 ]; then
+                    echo "`basename ${bracketed[$index]}`  \\"
+                    echo "`basename ${bracketed[$(($index+1))]}`   |> $DIRPREFIX$folderIndex - Exposures: $exp_comp2 $exp_comp1 $exp_comp3"
+                    echo "`basename ${bracketed[$(($index+2))]}`  /"
+                    echo
+                fi
+                #if [ $USEKDE = 1 ]; then
+                #    echo "`basename ${bracketed[$index]}`  \\" >>$tmpfile
+                #    echo "`basename ${bracketed[$(($index+1))]}`   |> $DIRPREFIX$folderIndex - Exposures: $exp_comp2 $exp_comp1 $exp_comp3" >>$tmpfile
+                #    echo "`basename ${bracketed[$(($index+2))]}`  /" >>$tmpfile
+                #    echo
+                #fi
+                if [ "$DRYRUN" = "N" ]; then # if for real
+                    blendTifFiles ${bracketed[$index]} ${bracketed[$(($index+1))]} ${bracketed[$(($index+2))]} #blend bracketed
+                    #mv ${bracketed[$index]} ${bracketed[$(($index+1))]} ${bracketed[$(($index+2))]} "$BRACKETED_DIR"
+                fi
+                let "index = $index + 3"
+            else
+                if [ $VERBOSE = 1 ]; then
+                    echo "NO"
+                fi
+                let "index = $index + 1"
+            fi
+        else
+            if [ $VERBOSE = 1 ]; then
+                echo "NO"
+            fi
+            let "index = $index + 1"
+        fi
+    done
+}
+
+if [ -f "$DIR/._blended" ]; then
+    echo "Файлы в каталоге уже сведены. Пропускаем."
+else
+    processFileType "tif"
+    touch "$DIR/._blended"
+fi
