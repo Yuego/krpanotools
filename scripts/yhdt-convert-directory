@@ -15,12 +15,13 @@ EXIFTOOL=`which exiftool`
 
 cores_count=`grep -c ^processor /proc/cpuinfo`
 
-declare -a images
 declare -a _failed
 error=0
 failed_count=0
 converted_count=0
 counter=0
+
+IFS=$'\n'
 
 if [ -z "$CONVERT" ]; then
     echo "Для работы необходим ImageMagick"
@@ -99,8 +100,9 @@ FAILED_DIR="$DIR/_failed"
 
 cr_count=`find "$DIR" -maxdepth 1 -type f -iname "*.$EXTENSION" -print | wc -l`
 
-
 convertDirectory() {
+    declare -a images
+    
     if [ ! -d "$JPG_DIR" ]; then
         mkdir "$JPG_DIR"
     fi

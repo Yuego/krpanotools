@@ -15,6 +15,9 @@ QUIET=0
 VERBOSE=1
 DRYRUN=N
 
+# Фикс для пробелов в именах
+IFS=$'\n'
+
 if [ -z "$ENFUSE" ]; then
     echo "Для работы необходим пакет enblend"
     exit
@@ -76,10 +79,12 @@ processFileType() {
         echo "Analyzing $extension files"
     fi
     declare -a bracketed
-    for file in `find $DIR -maxdepth 1 -type f -iname "*.$extension" -print | sort`; do # find files with the right extension in specified directory and sort names
+    
+    for file in `find "$DIR" -maxdepth 1 -type f -iname "*.$extension" -print | sort`; do # find files with the right extension in specified directory and sort names
         isbracketed="NO"
-        make=`exiftool -n -S -EXIF:Make $file | cut -d ' ' -f 2-` # retrieve make from EXIF
-        camera=`exiftool -n -S -EXIF:Model $file | cut -d ' ' -f 2-` # retrieve camera model from EXIF
+        make=`exiftool -n -S -EXIF:Make "$file" | cut -d ' ' -f 2-` # retrieve make from EXIF
+        echo -e "$file"
+        camera=`exiftool -n -S -EXIF:Model "$file" | cut -d ' ' -f 2-` # retrieve camera model from EXIF
         if [ $VERBOSE = 1 ]; then
             echo Camera make: $make        Camera model: $camera
         fi
@@ -87,22 +92,22 @@ processFileType() {
             echo -n "Checking if file `basename $file` is bracketed ... "
         fi
         if [ "$make" = "NIKON CORPORATION" -a "$camera" = "NIKON D90" ] || [ "$make" = "NIKON CORPORATION" -a "$camera" = "NIKON D50" ]; then
-            shootingMode=`exiftool -n -S -MakerNotes:ShootingMode $file | awk '{print $2}'` # retrieve shooting mode from MakerNotes
+            shootingMode=`exiftool -n -S -MakerNotes:ShootingMode "$file" | awk '{print $2}'` # retrieve shooting mode from MakerNotes
             let "shootingMode = $shootingMode & 16"
             if [ $shootingMode = 16 ]; then
-                bracketed=( "${bracketed[@]}" $file )
+                bracketed=( "${bracketed[@]}" "$file" )
                 isbracketed="YES"
             fi
         elif [ "$make" = "Canon" -a "$camera" = "Canon EOS 50D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 7D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 60D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 550D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 5D Mark II" ]; then
             bracketMode=`exiftool -n -S -MakerNotes:BracketMode $file | awk '{print $2}'` # retrieve Bracket mode from MakerNotes -- Added because EXIF:ExposureMode didn't work on files from Canon 50D
             if [ $bracketMode = 1 ]; then
-                bracketed=( "${bracketed[@]}" $file )
+                bracketed=( "${bracketed[@]}" "$file" )
                 isbracketed="YES"
             fi
         elif [ "$make" = "Canon" -a "$camera" = "Canon EOS 400D DIGITAL" ]; then
             expoMode=`exiftool -n -S -EXIF:ExposureMode $file | awk '{print $2}'` # retrieve exposure mode from EXIF
             if [ $expoMode = 2 ]; then # 2 is the value for Auto Bracketed, file should be looked at
-                bracketed=( "${bracketed[@]}" $file )
+                bracketed=( "${bracketed[@]}" "$file" )
                 isbracketed="YES"
             fi
         fi
@@ -110,28 +115,29 @@ processFileType() {
             echo $isbracketed
         fi
     done
+    
     element_count=${#bracketed[@]}
     if [ $VERBOSE = 1 ]; then
         echo "$element_count bracketed images found"
     fi
     index=0 # counter for looping in the array of files
     while [ $index -lt  $(($element_count-2)) ];do # have to have at least 3 files left
-        image_number1=`basename ${bracketed[$index]} | sed "s/\..*//g" | sed "s/[^0-9]//g"` # retrieve image name without path and without extension
+        image_number1=`basename "${bracketed[$index]}" | sed "s/\..*//g" | sed "s/[^0-9]//g"` # retrieve image name without path and without extension
         # make sure the file number sequence is continuous and that they belong to the same bracket
-        image_number2=`basename ${bracketed[$(($index+1))]} | sed "s/\..*//g" | sed "s/[^0-9]//g"`
-        image_number3=`basename ${bracketed[$(($index+2))]} | sed "s/\..*//g" | sed "s/[^0-9]//g"`
+        image_number2=`basename "${bracketed[$(($index+1))]}" | sed "s/\..*//g" | sed "s/[^0-9]//g"`
+        image_number3=`basename "${bracketed[$(($index+2))]}" | sed "s/\..*//g" | sed "s/[^0-9]//g"`
         if [ $VERBOSE = 1 ]; then
             echo -n "Checking if images $image_number1 $image_number2 $image_number3 go together ... "
         fi
         if [ $((10#$image_number2)) = $((10#$image_number1+1)) ] && [ $((10#$image_number3)) = $((10#$image_number1+2)) ]; then
             if [ "$make" = "NIKON CORPORATION" -a "$camera" = "NIKON D90" ] || [ "$make" = "NIKON CORPORATION" -a "$camera" = "NIKON D50" ]; then
-                exp_comp1=`exiftool -n -S -MakerNotes:ExposureBracketValue ${bracketed[$index]} | awk '{print $2}'`
-                exp_comp2=`exiftool -n -S -MakerNotes:ExposureBracketValue ${bracketed[$(($index+1))]} | awk '{print $2}'`
-                exp_comp3=`exiftool -n -S -MakerNotes:ExposureBracketValue ${bracketed[$(($index+2))]} | awk '{print $2}'`
+                exp_comp1=`exiftool -n -S -MakerNotes:ExposureBracketValue "${bracketed[$index]}" | awk '{print $2}'`
+                exp_comp2=`exiftool -n -S -MakerNotes:ExposureBracketValue "${bracketed[$(($index+1))]}" | awk '{print $2}'`
+                exp_comp3=`exiftool -n -S -MakerNotes:ExposureBracketValue "${bracketed[$(($index+2))]}" | awk '{print $2}'`
             elif [ "$make" = "Canon" -a "$camera" = "Canon EOS 50D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 400D DIGITAL" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 7D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 60D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 550D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 5D Mark II" ]; then
-                exp_comp1=`exiftool -n -S -MakerNotes:AEBBracketValue ${bracketed[$index]} | awk '{print $2}'`
-                exp_comp2=`exiftool -n -S -MakerNotes:AEBBracketValue ${bracketed[$(($index+1))]} | awk '{print $2}'`
-                exp_comp3=`exiftool -n -S -MakerNotes:AEBBracketValue ${bracketed[$(($index+2))]} | awk '{print $2}'`
+                exp_comp1=`exiftool -n -S -MakerNotes:AEBBracketValue "${bracketed[$index]}" | awk '{print $2}'`
+                exp_comp2=`exiftool -n -S -MakerNotes:AEBBracketValue "${bracketed[$(($index+1))]}" | awk '{print $2}'`
+                exp_comp3=`exiftool -n -S -MakerNotes:AEBBracketValue "${bracketed[$(($index+2))]}" | awk '{print $2}'`
             fi
             if [ `echo "($exp_comp1 - $exp_comp2) == ($exp_comp3 - $exp_comp1)" | bc -q` = 1 ]; then
                 if [ $VERBOSE = 1 ]; then
@@ -140,9 +146,9 @@ processFileType() {
                 let "folderIndex = $folderIndex + 1" # increment folder index
                 #currentDir=$DIR/$extension/$DIRPREFIX$folderIndex
                 if [ $QUIET = 0 ]; then
-                    echo "`basename ${bracketed[$index]}`  \\"
-                    echo "`basename ${bracketed[$(($index+1))]}`   |> $DIRPREFIX$folderIndex - Exposures: $exp_comp2 $exp_comp1 $exp_comp3"
-                    echo "`basename ${bracketed[$(($index+2))]}`  /"
+                    echo "`basename "${bracketed[$index]}"`  \\"
+                    echo "`basename "${bracketed[$(($index+1))]}"`   |> $DIRPREFIX$folderIndex - Exposures: $exp_comp2 $exp_comp1 $exp_comp3"
+                    echo "`basename "${bracketed[$(($index+2))]}"`  /"
                     echo
                 fi
                 #if [ $USEKDE = 1 ]; then
@@ -152,7 +158,7 @@ processFileType() {
                 #    echo
                 #fi
                 if [ "$DRYRUN" = "N" ]; then # if for real
-                    blendTifFiles ${bracketed[$index]} ${bracketed[$(($index+1))]} ${bracketed[$(($index+2))]} #blend bracketed
+                    blendTifFiles "${bracketed[$index]}" "${bracketed[$(($index+1))]}" "${bracketed[$(($index+2))]}" #blend bracketed
                     #mv ${bracketed[$index]} ${bracketed[$(($index+1))]} ${bracketed[$(($index+2))]} "$BRACKETED_DIR"
                 fi
                 let "index = $index + 3"

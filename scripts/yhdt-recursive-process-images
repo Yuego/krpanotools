@@ -36,7 +36,7 @@ LOCKFILE="$DIR/lock.$$"
 walkDirs() {
     extension=$1
     
-    for lf in `find "$DIR" -maxdepth 1 -type f -iname "lock.*" -print | sort`; do
+    find "$DIR" -maxdepth 1 -type f -iname "lock.*" -print | sort | while read lf; do
         #echo "Lockfile: $lf"
         pid=`basename "$lf" | sed "s/^.*\.//ig"`
         #echo "PID: $pid"
@@ -55,7 +55,7 @@ walkDirs() {
     
     touch "$LOCKFILE"
     
-    for directory in `find "$DIR" -type d -print | sort`; do
+    find "$DIR" -type d -print | sort | while read directory; do
         cr_count=`find "$directory" -maxdepth 1 -type f -iname "*.$extension" -print | wc -l`
         
         if [ ! "$cr_count" -eq 0 ]; then
