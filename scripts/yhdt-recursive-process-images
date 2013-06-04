@@ -29,10 +29,31 @@ fi
 
 DIR=$(cd "$DIR" && pwd) #transform to absolute path
 
+LOCKFILE="$DIR/lock.$$"
+
 # Ищем все папки по указанному пути и в каждой выполняем конвертацию
 ### если есть, что конвертировать
 walkDirs() {
     extension=$1
+    
+    for lf in `find "$DIR" -maxdepth 1 -type f -iname "lock.*" -print | sort`; do
+        #echo "Lockfile: $lf"
+        pid=`basename "$lf" | sed "s/^.*\.//ig"`
+        #echo "PID: $pid"
+        
+        process=`ps a | grep $pid | grep -v grep`
+        #echo "Process: $Process"
+        
+        if [ ! -z "$process" ]; then
+            echo "Каталог '$DIR' уже обрабатывается. Выходим"
+            exit
+        else
+            echo "Потерянный lockfile. Удаляем"
+            rm $lf
+        fi
+    done
+    
+    touch "$LOCKFILE"
     
     for directory in `find "$DIR" -type d -print | sort`; do
         cr_count=`find "$directory" -maxdepth 1 -type f -iname "*.$extension" -print | wc -l`
@@ -41,6 +62,8 @@ walkDirs() {
             "$DIR_CONVERT_BIN" "$directory" "$extension"
         fi
     done
+    
+    rm "$LOCKFILE"
 }
 
 walkDirs "$EXTENSION"
