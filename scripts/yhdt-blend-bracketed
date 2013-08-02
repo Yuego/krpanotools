@@ -47,6 +47,10 @@ BRACKETED_DIR="$DIR/bracketed"
 #    mkdir "$BRACKETED_DIR"
 #fi
 
+fn_loaded() {
+    type "$1" >/dev/null 2>&1
+}
+
 blendTifFiles() {
     echo "Enfuse $1 $2 $3 in '$DIR'"
     
@@ -83,34 +87,25 @@ processFileType() {
     for file in `find "$DIR" -maxdepth 1 -type f -iname "*.$extension" -print | sort`; do # find files with the right extension in specified directory and sort names
         isbracketed="NO"
         make=`exiftool -n -S -EXIF:Make "$file" | cut -d ' ' -f 2-` # retrieve make from EXIF
+        make_lower=`echo "$make" | awk '{print tolower($0)}'`
         echo -e "$file"
         camera=`exiftool -n -S -EXIF:Model "$file" | cut -d ' ' -f 2-` # retrieve camera model from EXIF
+        camera_lower=`echo "$camera" | awk '{print tolower($0)}'`
+        
         if [ $VERBOSE = 1 ]; then
             echo Camera make: $make        Camera model: $camera
         fi
+        fn_loaded "bracket_mode" || . $SELF_PATH/camera/${make_lower// /_}/${camera_lower// /_}
+        
         if [ $VERBOSE = 1 ]; then
             echo -n "Checking if file `basename $file` is bracketed ... "
         fi
-        if [ "$make" = "NIKON CORPORATION" -a "$camera" = "NIKON D90" ] || [ "$make" = "NIKON CORPORATION" -a "$camera" = "NIKON D50" ]; then
-            shootingMode=`exiftool -n -S -MakerNotes:ShootingMode "$file" | awk '{print $2}'` # retrieve shooting mode from MakerNotes
-            let "shootingMode = $shootingMode & 16"
-            if [ $shootingMode = 16 ]; then
-                bracketed=( "${bracketed[@]}" "$file" )
-                isbracketed="YES"
-            fi
-        elif [ "$make" = "Canon" -a "$camera" = "Canon EOS 50D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 7D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 60D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 550D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 5D Mark II" ]; then
-            bracketMode=`exiftool -n -S -MakerNotes:BracketMode $file | awk '{print $2}'` # retrieve Bracket mode from MakerNotes -- Added because EXIF:ExposureMode didn't work on files from Canon 50D
-            if [ $bracketMode = 1 ]; then
-                bracketed=( "${bracketed[@]}" "$file" )
-                isbracketed="YES"
-            fi
-        elif [ "$make" = "Canon" -a "$camera" = "Canon EOS 400D DIGITAL" ]; then
-            expoMode=`exiftool -n -S -EXIF:ExposureMode $file | awk '{print $2}'` # retrieve exposure mode from EXIF
-            if [ $expoMode = 2 ]; then # 2 is the value for Auto Bracketed, file should be looked at
-                bracketed=( "${bracketed[@]}" "$file" )
-                isbracketed="YES"
-            fi
+        
+        isbracketed=`bracket_mode "$file"`
+        if [ "$isbracketed" = "YES" ]; then
+            bracketed=( "${bracketed[@]}" "$file" )
         fi
+        
         if [ $VERBOSE = 1 ]; then
             echo $isbracketed
         fi
@@ -130,15 +125,10 @@ processFileType() {
             echo -n "Checking if images $image_number1 $image_number2 $image_number3 go together ... "
         fi
         if [ $((10#$image_number2)) = $((10#$image_number1+1)) ] && [ $((10#$image_number3)) = $((10#$image_number1+2)) ]; then
-            if [ "$make" = "NIKON CORPORATION" -a "$camera" = "NIKON D90" ] || [ "$make" = "NIKON CORPORATION" -a "$camera" = "NIKON D50" ]; then
-                exp_comp1=`exiftool -n -S -MakerNotes:ExposureBracketValue "${bracketed[$index]}" | awk '{print $2}'`
-                exp_comp2=`exiftool -n -S -MakerNotes:ExposureBracketValue "${bracketed[$(($index+1))]}" | awk '{print $2}'`
-                exp_comp3=`exiftool -n -S -MakerNotes:ExposureBracketValue "${bracketed[$(($index+2))]}" | awk '{print $2}'`
-            elif [ "$make" = "Canon" -a "$camera" = "Canon EOS 50D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 400D DIGITAL" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 7D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 60D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 550D" ] || [ "$make" = "Canon" -a "$camera" = "Canon EOS 5D Mark II" ]; then
-                exp_comp1=`exiftool -n -S -MakerNotes:AEBBracketValue "${bracketed[$index]}" | awk '{print $2}'`
-                exp_comp2=`exiftool -n -S -MakerNotes:AEBBracketValue "${bracketed[$(($index+1))]}" | awk '{print $2}'`
-                exp_comp3=`exiftool -n -S -MakerNotes:AEBBracketValue "${bracketed[$(($index+2))]}" | awk '{print $2}'`
-            fi
+            exp_comp1=`get_exposure "${bracketed[$index]}"`
+            exp_comp2=`get_exposure "${bracketed[$(($index+1))]}"`
+            exp_comp3=`get_exposure "${bracketed[$(($index+2))]}"`
+
             if [ `echo "($exp_comp1 - $exp_comp2) == ($exp_comp3 - $exp_comp1)" | bc -q` = 1 ]; then
                 if [ $VERBOSE = 1 ]; then
                     echo "YES"

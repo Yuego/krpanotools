@@ -1,0 +1,20 @@
+#!/bin/bash
+# Nikon D50
+# Nikon D90
+
+bracket_mode() {
+    bracketMode=`exiftool -n -S -MakerNotes:ShootingMode "$1" | awk '{print $2}'`
+    
+    let "bracketMode = $bracketMode & 16"
+    if [ $bracketMode = 16 ]; then
+        echo "YES"
+        return
+    fi
+    
+    echo "NO"
+}
+
+
+get_exposure() {
+    echo `exiftool -n -S -MakerNotes:ExposureBracketValue "$1" | awk '{print $2}'`
+}

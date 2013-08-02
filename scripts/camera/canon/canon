@@ -1,0 +1,23 @@
+#!/bin/bash
+# Canon EOS 5D Mark II
+# Canon EOS 7D
+# Canon EOS 50D
+# Canon EOS 60D
+# Canon EOS 550D
+# Canon EOS 650D
+
+bracket_mode() {
+    bracketMode=`exiftool -n -S -MakerNotes:BracketMode "$1" | awk '{print $2}'`
+    
+    if [ $bracketMode = 1 ]; then
+        echo "YES"
+        return
+    fi
+    
+    echo "NO"
+}
+
+
+get_exposure() {
+    echo `exiftool -n -S -MakerNotes:AEBBracketValue "$1" | awk '{print $2}'`
+}

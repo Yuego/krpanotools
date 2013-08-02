@@ -1,0 +1,18 @@
+#!/bin/bash
+# Canon EOS 400D DIGITAL
+
+bracket_mode() {
+    bracketMode=`exiftool -n -S -EXIF:ExposureMode "$1" | awk '{print $2}'`
+    
+    if [ $bracketMode = 2 ]; then
+        echo "YES"
+        return
+    fi
+    
+    echo "NO"
+}
+
+
+get_exposure() {
+    echo `exiftool -n -S -MakerNotes:AEBBracketValue "$1" | awk '{print $2}'`
+}

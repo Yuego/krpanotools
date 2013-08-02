@@ -5,11 +5,6 @@
 	<!-- set skin settings: bingmaps? gyro? thumbnail controlling? tooltips? -->
 	<skin_settings bingmaps="[HAVEGPS]" />
 
-	<action name="startup">
-		if(startscene === null, copy(startscene,scene[0].name));
-		loadscene(get(startscene), null, MERGE);
-	</action>
-
 	[SCENES]
 
 </krpano>
