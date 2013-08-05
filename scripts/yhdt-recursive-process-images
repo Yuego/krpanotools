@@ -65,9 +65,9 @@ walkDirs() {
     touch "$LOCKFILE"
     
     find "$DIR" -type d -print | sort | while read directory; do
-        space_status=`check_space "$directory" $MIN_SPACE`
-        if [ ! $space_status -eq 0 ]; then
-            echo "Недостаточно места для работы. Выходим"
+        check_space "$directory"
+        if [ ! $SPACE_STATUS -eq 0 ]; then
+            echo "Недостаточно места для работы. Освободите как минимум ${MIN_SPACE_MB}МБ"
             return $E_NO_SPACE
         fi
 

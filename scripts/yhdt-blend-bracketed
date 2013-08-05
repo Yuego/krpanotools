@@ -8,6 +8,7 @@ SELF_PATH="`dirname $0`"
 . "$SELF_PATH/functions.sh"
 
 DIR="$1"
+EXT="$2"
 
 ENFUSE=`which enfuse`
 EXIFTOOL=`which exiftool`
@@ -34,6 +35,11 @@ if [ -z "$DIR" ]; then
     exit
 fi
 
+if [ -z "$EXT" ]; then
+    echo "Укажите расширение файлов"
+    exit
+fi
+
 if [ ! -d "$DIR" ]; then
     echo "$DIR не является директорией"
     exit
@@ -44,13 +50,11 @@ DIR=$(cd "$DIR" && pwd) #transform to absolute path
 BLEND_DIR="$DIR/blend"
 BRACKETED_DIR="$DIR/bracketed"
 
-#if [ ! -d "$BRACKETED_DIR" ]; then
-#    mkdir "$BRACKETED_DIR"
-#fi
-
 
 blendTifFiles() {
     echo "Enfuse $1 $2 $3 in '$DIR'"
+    local blend_name
+    local new_file
     
     if [ ! -d "$BLEND_DIR" ]; then
         mkdir "$BLEND_DIR"
@@ -59,16 +63,18 @@ blendTifFiles() {
     blend_name=`basename $1 | sed "s/\..*//g"`
     new_file="$DIR/blend/$blend_name.tif"
     
-    enfuse -o "$new_file"  "$1" "$2" "$3"
+    $ENFUSE -o "$new_file"  "$1" "$2" "$3"
     
     if [ $? -eq 0 ]; then
-        exiftool -overwrite_original -x Orientation -x Compression -tagsFromFile "$1" -EXIF:All --IFD1:All -IPTC:All "${new_file}" > /dev/null 2>&1
+        $EXIFTOOL -overwrite_original -x Orientation -x Compression -tagsFromFile "$1" -EXIF:All --IFD1:All -IPTC:All "${new_file}" > /dev/null 2>&1
     
-        echo "Done"
+        return $E_NO_ERR
     else
         echo "Failed"
+        return $E_UNKNOWN
     fi
 }
+
 
 # function processFileType() takes file extension as a param (case insensitive)
 processFileType() {
@@ -87,6 +93,7 @@ processFileType() {
     local exp_comp1
     local exp_comp2
     local exp_comp3
+    local has_errors=0
     
     local extension=$1
 
@@ -101,10 +108,10 @@ processFileType() {
     
     for file in `find "$DIR" -maxdepth 1 -type f -iname "*.$extension" -print | sort`; do # find files with the right extension in specified directory and sort names
         isbracketed="NO"
-        make=`exiftool -n -S -EXIF:Make "$file" | cut -d ' ' -f 2-` # retrieve make from EXIF
+        make=`$EXIFTOOL -n -S -EXIF:Make "$file" | cut -d ' ' -f 2-` # retrieve make from EXIF
         make_lower=`echo "$make" | awk '{print tolower($0)}'`
         echo -e "$file"
-        camera=`exiftool -n -S -EXIF:Model "$file" | cut -d ' ' -f 2-` # retrieve camera model from EXIF
+        camera=`$EXIFTOOL -n -S -EXIF:Model "$file" | cut -d ' ' -f 2-` # retrieve camera model from EXIF
         camera_lower=`echo "$camera" | awk '{print tolower($0)}'`
         
         if [ $VERBOSE = 1 ]; then
@@ -132,11 +139,12 @@ processFileType() {
     fi
     index=0 # counter for looping in the array of files
     while [ $index -lt  $(($element_count-2)) ];do # have to have at least 3 files left
-        space_status=`check_space "$DIR" $MIN_space`
-	if [ ! $space_status -eq 0 ]; then
+        check_space "$DIR"
+        if [ ! $SPACE_STATUS -eq 0 ]; then
             echo "Закончилось место на диске. Выходим."
             return $E_NO_SPACE
         fi
+        
         image_number1=`basename "${bracketed[$index]}" | sed "s/\..*//g" | sed "s/[^0-9]//g"` # retrieve image name without path and without extension
         # make sure the file number sequence is continuous and that they belong to the same bracket
         image_number2=`basename "${bracketed[$(($index+1))]}" | sed "s/\..*//g" | sed "s/[^0-9]//g"`
@@ -170,6 +178,9 @@ processFileType() {
                 if [ "$DRYRUN" = "N" ]; then # if for real
                     blendTifFiles "${bracketed[$index]}" "${bracketed[$(($index+1))]}" "${bracketed[$(($index+2))]}" #blend bracketed
                     #mv ${bracketed[$index]} ${bracketed[$(($index+1))]} ${bracketed[$(($index+2))]} "$BRACKETED_DIR"
+                    if [ ! $? -eq $E_NO_ERR ]; then
+                        has_errors=$?
+                    fi
                 fi
                 let "index = $index + 3"
             else
@@ -185,16 +196,18 @@ processFileType() {
             let "index = $index + 1"
         fi
     done
+    
+    return $has_errors
 }
 
-SPACE_STATUS=`check_space "$DIR" $MIN_SPACE`
+check_space "$DIR"
 
 if [ -f "$DIR/._blended" ]; then
     echo "Файлы в каталоге уже сведены. Пропускаем."
 elif [ ! $SPACE_STATUS -eq 0 ]; then
     echo "Недостаточно места на диске. Пропускаем каталог"
 else
-    processFileType "tif"
+    processFileType "$EXT"
     if [ $? -eq 0 ]; then
         # Только если процесс действительно завершился без ошибок
         touch "$DIR/._blended"

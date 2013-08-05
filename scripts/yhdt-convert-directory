@@ -15,8 +15,6 @@ BLEND_BRACKETED_BIN="$SELF_PATH/yhdt-blend-bracketed"
 CONVERT=`which convert`
 EXIFTOOL=`which exiftool`
 
-cores_count=`grep -c ^processor /proc/cpuinfo`
-
 declare -a _failed
 error=0
 failed_count=0
@@ -51,6 +49,7 @@ if [ -z "$EXTENSION" ]; then
 fi
 
 convertFile() {
+    local space_status
     local counter
     local extension
 
@@ -61,6 +60,14 @@ convertFile() {
     fi
     
     local filename=`basename "$image"`
+    local filedir=`dirname "$image"`
+    
+    check_space "$filedir"
+    if [ ! $SPACE_STATUS -eq 0 ]; then
+        echo "Недостаточно места на диске для конвертации файла. Выходим"
+        return $E_NO_SPACE
+    fi
+    
     local old_file="$image"
     local new_file="$TIF_DIR/"`echo $filename | sed "s/\..*/.tif/ig"`
     counter=$(($counter+1))
@@ -68,10 +75,10 @@ convertFile() {
     if [ ! -f "$DIR/._${filename}_converted" ]; then
         echo -n -e "Конвертирую файл $filename...\t\t\t\t"
         
-        convert $extension:"${old_file}" "${new_file}" > /dev/null 2>&1
+        $CONVERT $extension:"${old_file}" "${new_file}" > /dev/null 2>&1
         error=$?
         if [ $error = 0 ]; then
-            exiftool -overwrite_original -x Orientation -x Compression -tagsFromFile "${old_file}" -EXIF:All --IFD1:All -IPTC:All "${new_file}" > /dev/null 2>&1
+            $EXIFTOOL -overwrite_original -x Orientation -x Compression -tagsFromFile "${old_file}" -EXIF:All --IFD1:All -IPTC:All "${new_file}" > /dev/null 2>&1
         fi
     
         if [ ! $error -eq 0 ]; then
@@ -88,15 +95,22 @@ convertFile() {
             converted=$(($converted+1))
             touch "$DIR/._${filename}_converted"
             echo 'OK'
+            return $E_NO_ERR
         fi
     else
         echo "Файл $filename уже сконвертирован"
+        return $E_NO_ERR
     fi
     
     
 }
 
 DIR=$(cd "$DIR" && pwd) #transform to absolute path
+
+if [[ "$DIR" == *_failed* ]]; then
+    echo "Каталог с проблемными файлами '$DIR' пропускаем..."
+    exit $E_NO_ERR
+fi
 
 JPG_DIR="$DIR/jpg"
 TIF_DIR="$DIR/_tif"
@@ -108,8 +122,9 @@ convertDirectory() {
     local space_status
     local image
 
-    space_status=`check_space "$DIR" $MIN_SPACE`
-    if [ ! $space_status -eq 0 ]; then
+    echo "Конвертирую каталог '$DIR'..."
+    check_space "$DIR"
+    if [ ! $SPACE_STATUS -eq 0 ]; then
         echo "Недостаточно места на диске. Выходим"
         return $E_NO_SPACE
     fi
@@ -132,22 +147,23 @@ convertDirectory() {
     
     local index=0
     while [ $index -lt $cr_count ]; do
-        echo "Index: $index::: "
         local core=0
-        while [ $core -lt $cores_count ]; do
+        while [ $core -lt $CPU_CORES ]; do
+            if [ -z "${images[$index]}" ]; then
+                # Массив закончился, а ядра - нет
+                break
+            fi
             echo "Core: $core; Image: ${images[$index]}; "
             convertFile "${images[$index]}" &
             let "core = $core + 1"
             let "index = $index + 1"
         done
-        #echo -e ":::Wait... "
         wait
-        #echo "OK"
     done
 }
 
 if [ -f "$DIR/._converted" ]; then
-    echo "Файлы в каталоге уже сконвертированы. Пропускаем."
+    echo "Файлы в каталоге '$DIR' уже сконвертированы. Пропускаем."
 else
     # Пропускаем каталоги, в которых нет CR2
     if [ $cr_count -gt 0 ]; then
@@ -159,4 +175,4 @@ else
 fi
 
 # И сразу сведем брекетинг уже из TIFF`ов
-"$BLEND_BRACKETED_BIN" "$TIF_DIR"
+"$BLEND_BRACKETED_BIN" "$TIF_DIR" "tif"
