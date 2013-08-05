@@ -6,6 +6,7 @@
 SELF="`basename $0`"
 SELF_PATH="`dirname $0`"
 
+. "$SELF_PATH/functions.sh"
 
 DIR="$1"
 EXTENSION="$2"
@@ -37,7 +38,12 @@ LOCKFILE="$DIR/lock.$$"
 # Ищем все папки по указанному пути и в каждой выполняем конвертацию
 ### если есть, что конвертировать
 walkDirs() {
-    extension=$1
+    local lf
+    local pid
+    local process
+    local space_status
+    
+    local extension=$1
     
     for lf in `find "$DIR" -maxdepth 1 -type f -iname "lock.*" -print | sort`; do
         #echo "Lockfile: $lf"
@@ -59,14 +65,19 @@ walkDirs() {
     touch "$LOCKFILE"
     
     find "$DIR" -type d -print | sort | while read directory; do
+        space_status=`check_space "$directory" $MIN_SPACE`
+        if [ ! $space_status -eq 0 ]; then
+            echo "Недостаточно места для работы. Выходим"
+            return $E_NO_SPACE
+        fi
+
         cr_count=`find "$directory" -maxdepth 1 -type f -iname "*.$extension" -print | wc -l`
         
         if [ ! "$cr_count" -eq 0 ]; then
             "$DIR_CONVERT_BIN" "$directory" "$extension"
         fi
     done
-    
-    rm "$LOCKFILE"
 }
 
 walkDirs "$EXTENSION"
+rm "$LOCKFILE"

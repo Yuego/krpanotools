@@ -5,6 +5,8 @@
 SELF="`basename $0`"
 SELF_PATH="`dirname $0`"
 
+. "$SELF_PATH/functions.sh"
+
 DIR="$1"
 EXTENSION="$2"
 
@@ -49,13 +51,14 @@ if [ -z "$EXTENSION" ]; then
 fi
 
 convertFile() {
+    local counter
+    local extension
+
     local image=$1
     
     if [ -z "$image" ]; then
-        return
+        return $E_NO_ARGS
     fi
-    
-    error=0
     
     local filename=`basename "$image"`
     local old_file="$image"
@@ -77,9 +80,10 @@ convertFile() {
             fi
         
             _failed=( "${failed[@]}" "$filename" )
-            fail_count=$(($fail_count+1))
-            mv "$old_file" "$FAILED_DIR"
-            echo 'ОШИБКА'
+            failed_count=$(($fail_count+1))
+            #mv "$old_file" "$FAILED_DIR"
+	    ln -sf "$old_file" "$FAILED_DIR/$filename"
+            echo "ОШИБКА: не могу сконвертировать файл $old_file"
         else
             converted=$(($converted+1))
             touch "$DIR/._${filename}_converted"
@@ -101,8 +105,18 @@ FAILED_DIR="$DIR/_failed"
 cr_count=`find "$DIR" -maxdepth 1 -type f -iname "*.$EXTENSION" -print | wc -l`
 
 convertDirectory() {
+    local space_status
+    local image
+
+    space_status=`check_space "$DIR" $MIN_SPACE`
+    if [ ! $space_status -eq 0 ]; then
+        echo "Недостаточно места на диске. Выходим"
+        return $E_NO_SPACE
+    fi
+
     declare -a images
-    
+  
+  
     if [ ! -d "$JPG_DIR" ]; then
         mkdir "$JPG_DIR"
     fi
@@ -138,7 +152,9 @@ else
     # Пропускаем каталоги, в которых нет CR2
     if [ $cr_count -gt 0 ]; then
         convertDirectory
-        touch "$DIR/._converted"
+        if [ $? -eq 0 ]; then
+            touch "$DIR/._converted"
+        fi
     fi
 fi
 
