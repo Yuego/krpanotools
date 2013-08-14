@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=KonqPopupMenu/Plugin
+MimeType=inode/directory;x-directory/normal;
+Actions=blend;
+X-KDE-Priority=TopLevel
+X-KDE-Submenu=RAW
+Icon=luna
+Encoding=UTF-8
+Name=Работа с исходниками
+
+[Desktop Action blend]
+Exec=konsole -e /opt/krpanotools/scripts/yhdt-blend-bracketed %f tif
+Name[ru]=Свести брэкетинг в каталоге
+Name=Blend bracketed images
