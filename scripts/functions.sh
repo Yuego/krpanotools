@@ -21,6 +21,17 @@ check_space() {
 	fi
 }
 
+check_space_for_tifs() {
+    local min_space=$(( 92160 * $1 ))
+    if [ `df "$2" | tail -n 1 | awk '{ print $4 }'` -lt $min_space ]; then
+        SPACE_STATUS=1
+        return $E_NO_SPACE
+    else
+        SPACE_STATUS=0
+        return $E_NO_ERR
+    fi
+}
+
 
 
 fn_loaded() {

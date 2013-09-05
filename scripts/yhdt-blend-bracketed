@@ -63,7 +63,7 @@ blendTifFiles() {
     blend_name=`basename $1 | sed "s/\..*//g"`
     new_file="$DIR/blend/$blend_name.tif"
     
-    $ENFUSE -o "$new_file"  "$1" "$2" "$3"
+    $ENFUSE --compression=deflate -o "$new_file"  "$1" "$2" "$3"
     
     if [ $? -eq 0 ]; then
         $EXIFTOOL -overwrite_original -x Orientation -x Compression -tagsFromFile "$1" -EXIF:All --IFD1:All -IPTC:All "${new_file}" > /dev/null 2>&1

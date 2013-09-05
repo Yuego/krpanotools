@@ -12,19 +12,13 @@ EXTENSION="$2"
 
 BLEND_BRACKETED_BIN="$SELF_PATH/yhdt-blend-bracketed"
 
-CONVERT=`which convert`
 EXIFTOOL=`which exiftool`
-
-declare -a _failed
-error=0
-failed_count=0
-converted_count=0
-counter=0
+UFRAW_BATCH=`which ufraw-batch`
 
 IFS=$'\n'
 
-if [ -z "$CONVERT" ]; then
-    echo "Для работы необходим ImageMagick"
+if [ -z "$UFRAW_BATCH" ]; then
+    echo "Для работы необходим UFRaw"
     exit
 fi
 
@@ -48,89 +42,29 @@ if [ -z "$EXTENSION" ]; then
     exit
 fi
 
-convertFile() {
-    local space_status
-    local counter
-    local extension
-
-    local image=$1
-    
-    if [ -z "$image" ]; then
-        return $E_NO_ARGS
-    fi
-    
-    local filename=`basename "$image"`
-    local filedir=`dirname "$image"`
-    
-    check_space "$filedir"
-    if [ ! $SPACE_STATUS -eq 0 ]; then
-        echo "Недостаточно места на диске для конвертации файла. Выходим"
-        return $E_NO_SPACE
-    fi
-    
-    local old_file="$image"
-    local new_file="$TIF_DIR/"`echo $filename | sed "s/\..*/.tif/ig"`
-    counter=$(($counter+1))
-    
-    if [ ! -f "$DIR/._${filename}_converted" ]; then
-        echo -n -e "Конвертирую файл $filename...\t\t\t\t"
-        
-        $CONVERT $extension:"${old_file}" "${new_file}" > /dev/null 2>&1
-        error=$?
-        if [ $error = 0 ]; then
-            $EXIFTOOL -overwrite_original -x Orientation -x Compression -tagsFromFile "${old_file}" -EXIF:All --IFD1:All -IPTC:All "${new_file}" > /dev/null 2>&1
-        fi
-    
-        if [ ! $error -eq 0 ]; then
-            if [ ! -d "$FAILED_DIR" ]; then
-                mkdir "$FAILED_DIR"
-            fi
-        
-            _failed=( "${failed[@]}" "$filename" )
-            failed_count=$(($fail_count+1))
-            #mv "$old_file" "$FAILED_DIR"
-	    ln -sf "$old_file" "$FAILED_DIR/$filename"
-            echo "ОШИБКА: не могу сконвертировать файл $old_file"
-        else
-            converted=$(($converted+1))
-            touch "$DIR/._${filename}_converted"
-            echo 'OK'
-            return $E_NO_ERR
-        fi
-    else
-        echo "Файл $filename уже сконвертирован"
-        return $E_NO_ERR
-    fi
-    
-    
-}
-
 DIR=$(cd "$DIR" && pwd) #transform to absolute path
-
-if [[ "$DIR" == *_failed* ]]; then
-    echo "Каталог с проблемными файлами '$DIR' пропускаем..."
-    exit $E_NO_ERR
-fi
 
 JPG_DIR="$DIR/jpg"
 TIF_DIR="$DIR/_tif"
-FAILED_DIR="$DIR/_failed"
 
 cr_count=`find "$DIR" -maxdepth 1 -type f -iname "*.$EXTENSION" -print | wc -l`
 
 convertDirectory() {
     local space_status
     local image
+    local ufraw_config="$DIR/img.ufraw"
+    declare -a images
+    
+    for image in `find "$DIR" -maxdepth 1 -type f -iname "*.$EXTENSION" -print | sort`; do
+        images=( "${images[@]}" "$image" )
+    done
 
     echo "Конвертирую каталог '$DIR'..."
-    check_space "$DIR"
+    check_space_for_tifs ${#images[@]} "$DIR"
     if [ ! $SPACE_STATUS -eq 0 ]; then
         echo "Недостаточно места на диске. Выходим"
         return $E_NO_SPACE
     fi
-
-    declare -a images
-  
   
     if [ ! -d "$JPG_DIR" ]; then
         mkdir "$JPG_DIR"
@@ -141,25 +75,14 @@ convertDirectory() {
 
     find "$DIR" -maxdepth 1 -type f -iname "*.jpg" -exec mv {} "$JPG_DIR" \;
     
-    for image in `find "$DIR" -maxdepth 1 -type f -iname "*.$EXTENSION" -print | sort`; do
-        images=( "${images[@]}" "$image" )
-    done
+    $UFRAW_BATCH --create-id=only --out-type=tif --out-depth=16 --wb=auto --silent --overwrite --output="$DIR/img" "${images[0]}"
     
-    local index=0
-    while [ $index -lt $cr_count ]; do
-        local core=0
-        while [ $core -lt $CPU_CORES ]; do
-            if [ -z "${images[$index]}" ]; then
-                # Массив закончился, а ядра - нет
-                break
-            fi
-            echo "Core: $core; Image: ${images[$index]}; "
-            convertFile "${images[$index]}" &
-            let "core = $core + 1"
-            let "index = $index + 1"
-        done
-        wait
-    done
+    local temp=`grep Temperature "$ufraw_config" | grep -P '[\d.]+' -o`
+    local green=`grep Green "$ufraw_config" | grep -P '[\d.]+' -o`
+    rm "$ufraw_config"
+    
+    $UFRAW_BATCH --temperature=$temp --green=$green --out-path="$TIF_DIR" --out-type=tif --out-depth=16 --create-id=no \
+        --zip --silent --overwrite "$DIR"/*.$EXTENSION
 }
 
 if [ -f "$DIR/._converted" ]; then
