@@ -7,17 +7,25 @@
 # Canon EOS 650D
 
 bracket_mode() {
-    bracketMode=`exiftool -n -S -MakerNotes:BracketMode "$1" | awk '{print $2}'`
+    local bracket_mode
+    local exposure
+    read bracket_mode exposure <<<$(exiftool -n -S -t -MakerNotes:BracketMode -MakerNotes:AEBBracketValue "$1")
     
-    if [ $bracketMode = 1 ]; then
-        echo "YES"
+    if [ $bracket_mode = 1 ]; then
+        echo "YES" "$exposure"
         return
     fi
     
-    echo "NO"
+    echo "NO" "0"
 }
 
-
-get_exposure() {
-    echo `exiftool -n -S -MakerNotes:AEBBracketValue "$1" | awk '{print $2}'`
+bracket_count() {
+    local bracket_count=`exiftool -n -S -t -MakerNotes:AEBShotCount "$1" | cut -f1 -d' '`
+    
+    if [ ! -z "$bracket_count" ]; then
+        echo $bracket_count
+        return
+    fi
+    
+    echo 3
 }

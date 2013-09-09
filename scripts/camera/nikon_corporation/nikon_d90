@@ -3,18 +3,19 @@
 # Nikon D90
 
 bracket_mode() {
-    bracketMode=`exiftool -n -S -MakerNotes:ShootingMode "$1" | awk '{print $2}'`
+    local bracket_mode
+    local exposure
+    read bracket_mode exposure <<<$(exiftool -n -S -t -MakerNotes:ShootingMode -MakerNotes:ExposureBracketValue "$1")
     
-    let "bracketMode = $bracketMode & 16"
-    if [ $bracketMode = 16 ]; then
-        echo "YES"
+    let "bracket_mode = $bracket_mode & 16"
+    if [ $bracket_mode = 16 ]; then
+        echo "YES" "$exposure"
         return
     fi
     
-    echo "NO"
+    echo "NO" "0"
 }
 
-
-get_exposure() {
-    echo `exiftool -n -S -MakerNotes:ExposureBracketValue "$1" | awk '{print $2}'`
+bracket_count() {
+    echo 3
 }

@@ -3,7 +3,7 @@
 # Сводим брекетинг
  
 SELF="`basename $0`"
-SELF_PATH="`dirname $0`"
+SELF_PATH=$(cd "`dirname $0`" && pwd)
 
 usage() {
     echo "USAGE: $SELF [-f] <path> <extension>"
@@ -41,9 +41,6 @@ QUIET=0
 VERBOSE=1
 DRYRUN=N
 
-# Фикс для пробелов в именах
-IFS=$'\n'
-
 if [ -z "$ENFUSE" ]; then
     echo "Для работы необходим пакет enblend" && usage && exit 1
 fi
@@ -65,13 +62,13 @@ if [ ! -d "$DIR" ]; then
 fi
 
 DIR=$(cd "$DIR" && pwd) #transform to absolute path
+cd "$DIR"
 
 BLEND_DIR="$DIR/blend"
 BRACKETED_DIR="$DIR/bracketed"
 
 
 blendTifFiles() {
-    echo "Enfuse $1 $2 $3 in '$DIR'"
     local blend_name
     local new_file
     
@@ -82,11 +79,14 @@ blendTifFiles() {
     blend_name=`basename $1 | sed "s/\..*//g"`
     new_file="$DIR/blend/$blend_name.tif"
     
-    $ENFUSE --compression=deflate -o "$new_file"  "$1" "$2" "$3"
+    echo -n "Enfuse $1 $2 $3 $4 $5 $6 $7 into '$new_file' ... "
+    
+    $ENFUSE --compression=deflate -o "$new_file"  "$1" "$2" "$3" "$4" "$5" "$6" "$7" > /dev/null 2>&1
     
     if [ $? -eq 0 ]; then
         $EXIFTOOL -overwrite_original -x Orientation -x Compression -tagsFromFile "$1" -EXIF:All --IFD1:All -IPTC:All "${new_file}" > /dev/null 2>&1
     
+        echo "OK"
         return $E_NO_ERR
     else
         echo "Failed"
@@ -104,8 +104,11 @@ processFileType() {
     local camera
     local camera_lower
     local isbracketed
+    local bracket_count=3
     local element_count
     local index
+    local images_index
+    local bracketed_images_sequence
     local image_number1
     local image_number2
     local image_number3
@@ -116,35 +119,30 @@ processFileType() {
     
     local extension=$1
 
-    #if [ $USEKDE = 1 ]; then
-    #    qdbus $dbusRef setLabelText "Processing $extension files"
-    #    echo "Analyzing $extension files" >>$tmpfile
-    #fi
     if [ $QUIET = 0 ]; then
         echo "Analyzing $extension files"
     fi
     declare -a bracketed
+    declare -a exposures
     
-    for file in `find "$DIR" -maxdepth 1 -type f -iname "*.$extension" -print | sort`; do # find files with the right extension in specified directory and sort names
+    cd "$DIR"
+    for file in `find . -maxdepth 1 -type f -iname "*.$extension" -print | sort`; do # find files with the right extension in specified directory and sort names
         isbracketed="NO"
-        make=`$EXIFTOOL -n -S -EXIF:Make "$file" | cut -d ' ' -f 2-` # retrieve make from EXIF
+        read make camera <<<$($EXIFTOOL -n -S -t -EXIF:Make -EXIF:Model "$file")
+        
         make_lower=`echo "$make" | awk '{print tolower($0)}'`
-        echo -e "$file"
-        camera=`$EXIFTOOL -n -S -EXIF:Model "$file" | cut -d ' ' -f 2-` # retrieve camera model from EXIF
         camera_lower=`echo "$camera" | awk '{print tolower($0)}'`
         
-        if [ $VERBOSE = 1 ]; then
-            echo Camera make: $make        Camera model: $camera
-        fi
         fn_loaded "bracket_mode" || . $SELF_PATH/camera/${make_lower// /_}/${camera_lower// /_}
         
         if [ $VERBOSE = 1 ]; then
             echo -n "Checking if file `basename $file` is bracketed ... "
         fi
         
-        isbracketed=`bracket_mode "$file"`
+        read isbracketed exposure <<<$(bracket_mode "$file")
         if [ "$isbracketed" = "YES" ]; then
             bracketed=( "${bracketed[@]}" "$file" )
+            exposures=( "${exposures[@]}" "$exposure" )
         fi
         
         if [ $VERBOSE = 1 ]; then
@@ -153,65 +151,81 @@ processFileType() {
     done
     
     element_count=${#bracketed[@]}
+    bracket_count=`bracket_count ${bracketed[0]}`
     if [ $VERBOSE = 1 ]; then
         echo "$element_count bracketed images found"
     fi
     index=0 # counter for looping in the array of files
-    while [ $index -lt  $(($element_count-2)) ];do # have to have at least 3 files left
+    while [ $index -lt  $(($element_count-$bracket_count+1)) ];do # have to have at least 3 files left
         check_space "$DIR"
         if [ ! $SPACE_STATUS -eq 0 ]; then
             echo "Закончилось место на диске. Выходим."
             return $E_NO_SPACE
         fi
         
-        image_number1=`basename "${bracketed[$index]}" | sed "s/\..*//g" | sed "s/[^0-9]//g"` # retrieve image name without path and without extension
-        # make sure the file number sequence is continuous and that they belong to the same bracket
-        image_number2=`basename "${bracketed[$(($index+1))]}" | sed "s/\..*//g" | sed "s/[^0-9]//g"`
-        image_number3=`basename "${bracketed[$(($index+2))]}" | sed "s/\..*//g" | sed "s/[^0-9]//g"`
+        local bracketed_images_numbers=()
+        local bracketed_exposures=()
+        local bracketed_images_sequence="YES"
+        local bracketed_exposures_sequence="YES"
+        
+        images_index=0
+        while [ $images_index -lt $bracket_count ]; do
+            bracketed_images_numbers=( "${bracketed_images_numbers[@]}" "`basename ${bracketed[$(($index+$images_index))]} | sed "s/\..*//g" | sed "s/[^0-9]//g"`")
+            let "images_index = $images_index + 1"
+        done
+        
         if [ $VERBOSE = 1 ]; then
-            echo -n "Checking if images $image_number1 $image_number2 $image_number3 go together ... "
+            echo -n "Checking if images ${bracketed_images_numbers[@]} go together ... "
         fi
-        if [ $((10#$image_number2)) = $((10#$image_number1+1)) ] && [ $((10#$image_number3)) = $((10#$image_number1+2)) ]; then
-            exp_comp1=`get_exposure "${bracketed[$index]}"`
-            exp_comp2=`get_exposure "${bracketed[$(($index+1))]}"`
-            exp_comp3=`get_exposure "${bracketed[$(($index+2))]}"`
-
-            if [ `echo "($exp_comp1 - $exp_comp2) == ($exp_comp3 - $exp_comp1)" | bc -q` = 1 ]; then
-                if [ $VERBOSE = 1 ]; then
-                    echo "YES"
-                fi
-                let "folderIndex = $folderIndex + 1" # increment folder index
-                #currentDir=$DIR/$extension/$DIRPREFIX$folderIndex
-                if [ $QUIET = 0 ]; then
-                    echo "`basename "${bracketed[$index]}"`  \\"
-                    echo "`basename "${bracketed[$(($index+1))]}"`   |> $DIRPREFIX$folderIndex - Exposures: $exp_comp2 $exp_comp1 $exp_comp3"
-                    echo "`basename "${bracketed[$(($index+2))]}"`  /"
-                    echo
-                fi
-                #if [ $USEKDE = 1 ]; then
-                #    echo "`basename ${bracketed[$index]}`  \\" >>$tmpfile
-                #    echo "`basename ${bracketed[$(($index+1))]}`   |> $DIRPREFIX$folderIndex - Exposures: $exp_comp2 $exp_comp1 $exp_comp3" >>$tmpfile
-                #    echo "`basename ${bracketed[$(($index+2))]}`  /" >>$tmpfile
-                #    echo
-                #fi
-                if [ "$DRYRUN" = "N" ]; then # if for real
-                    blendTifFiles "${bracketed[$index]}" "${bracketed[$(($index+1))]}" "${bracketed[$(($index+2))]}" #blend bracketed
-                    #mv ${bracketed[$index]} ${bracketed[$(($index+1))]} ${bracketed[$(($index+2))]} "$BRACKETED_DIR"
-                    if [ ! $? -eq $E_NO_ERR ]; then
-                        has_errors=$?
-                    fi
-                fi
-                let "index = $index + 3"
-            else
-                if [ $VERBOSE = 1 ]; then
-                    echo "NO"
-                fi
-                let "index = $index + 1"
+        
+        images_index=0
+        while [ $images_index -lt $(($bracket_count-1)) ]; do
+            if [ ! $((10#${bracketed_images_numbers[$images_index]} + 1)) = $(( 10#${bracketed_images_numbers[$(($images_index+1))]} )) ]; then
+                bracketed_images_sequence="NO"
+                images_index=$bracketCount
             fi
+            let "images_index = $images_index + 1"
+        done
+        
+        if [ $VERBOSE = 1 ]; then
+            echo $bracketed_images_sequence
+            echo -n "Checking exposures of images ${bracketed_images_numbers[@]} ... "
+        fi
+        
+        images_index=1
+        photos_count=$(( $bracket_count / 2 ))
+        
+        exp0="${exposures[$index]}"
+        while [ $images_index -lt $(($photos_count+1)) ]; do
+            exp1="${exposures[$(($index+$images_index))]}"
+            exp2="${exposures[$(($index+$bracket_count-$images_index))]}"
+            
+            if [ ! `echo "($exp0 - $exp1) == ($exp2 - $exp0)" | bc -q` = 1 ]; then
+                bracketed_exposures_sequence="NO"
+            fi
+            
+            let "images_index = $images_index + 1"
+        done
+        
+        if [ $VERBOSE = 1 ]; then
+            echo $bracketed_exposures_sequence
+        fi
+        
+        if [ "$bracketed_exposures_sequence" = "YES" ]; then
+            if [ "$DRYRUN" = "N" ]; then # if for real
+                images_index=0
+                blend_params=()
+                while [ $images_index -lt $bracket_count ]; do
+                    blend_params=( "${blend_params[@]}" "${bracketed[$(($index+$images_index))]}" )
+                    let "images_index = $images_index + 1"
+                done
+                blendTifFiles ${blend_params[@]} #blend bracketed
+                if [ ! $? -eq $E_NO_ERR ]; then
+                    has_errors=$?
+                fi
+            fi
+            let "index = $index + $bracket_count"
         else
-            if [ $VERBOSE = 1 ]; then
-                echo "NO"
-            fi
             let "index = $index + 1"
         fi
     done
@@ -236,3 +250,5 @@ else
         touch "$DIR/._blended"
     fi
 fi
+
+cd "$WORK_PATH"
