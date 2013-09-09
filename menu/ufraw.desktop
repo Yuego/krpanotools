@@ -1,0 +1,14 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Name=UFRAW
+Type=Application
+Categories=Graphics;Photography;GTK;
+
+Exec=ufraw --create-id=only --wb=auto %f
+Terminal=false
+StartupNotify=true
+
+MimeType=image/x-dcraw;
+
+Icon=ufraw
+

@@ -1,9 +1,34 @@
 #!/bin/bash
-
 # Ищем файлы с расширением $extension в каталоге $DIR и конвертируем в TIFF
  
 SELF="`basename $0`"
 SELF_PATH="`dirname $0`"
+
+usage() {
+    echo "USAGE: $SELF [-f] [-w] <path> <extension>"
+    echo -e "Options:"
+    echo -e "\t-f Принудительно сконвертировать (даже если каталог отмечен, как сконвертированный)"
+    echo -e "\t-w Автоматически определять баланс белого каталога"
+    echo "Params:"
+    echo -e "\t <path>\tпуть к каталогу с RAW-файлами (ex. /home/user/dir1/), not a file name"
+    echo -e "\t <extension>\tрасширение RAW-файлов в каталоге (ex. CR2)"
+}
+
+i=0
+_agrs=()
+for arg in "$@"; do
+    _agrs[$i]="$arg"
+    i=$((i + 1))
+done
+
+while getopts "fw" Option; do
+    case $Option in
+            f ) FORCE="1";;
+            w ) AUTOBB="1";;
+            * ) echo "[!] Invalid option" && usage && exit 1;;
+    esac
+done
+shift $(($OPTIND - 1))
 
 . "$SELF_PATH/functions.sh"
 
@@ -18,28 +43,23 @@ UFRAW_BATCH=`which ufraw-batch`
 IFS=$'\n'
 
 if [ -z "$UFRAW_BATCH" ]; then
-    echo "Для работы необходим UFRaw"
-    exit
+    echo "Для работы необходим UFRaw" && usage && exit 1
 fi
 
 if [ -z "$EXIFTOOL" ]; then
-    echo "Для работы необходим exiftool"
-    exit
+    echo "Для работы необходим exiftool" && usage && exit 1
 fi
 
 if [ -z "$DIR" ]; then
-    echo "Укажите каталог с файлами"
-    exit
+    echo "Укажите каталог с файлами" && usage && exit 1
 fi
 
 if [ ! -d "$DIR" ]; then
-    echo "$DIR не является директорией"
-    exit
+    echo "$DIR не является директорией" && usage && exit 1
 fi
 
 if [ -z "$EXTENSION" ]; then
-    echo "Укажите расширение файлов"
-    exit
+    echo "Укажите расширение файлов" && usage && exit 1
 fi
 
 DIR=$(cd "$DIR" && pwd) #transform to absolute path
@@ -53,6 +73,7 @@ convertDirectory() {
     local space_status
     local image
     local ufraw_config="$DIR/img.ufraw"
+    local wb
     declare -a images
     
     for image in `find "$DIR" -maxdepth 1 -type f -iname "*.$EXTENSION" -print | sort`; do
@@ -69,21 +90,42 @@ convertDirectory() {
     if [ ! -d "$JPG_DIR" ]; then
         mkdir "$JPG_DIR"
     fi
-    if [ ! -d "$TIF_DIR" ]; then
-        mkdir "$TIF_DIR"
+    
+    if [ -d "$TIF_DIR" ]; then
+        rm "$TIF_DIR" -rf
     fi
+    mkdir "$TIF_DIR"
 
     find "$DIR" -maxdepth 1 -type f -iname "*.jpg" -exec mv {} "$JPG_DIR" \;
     
-    $UFRAW_BATCH --create-id=only --out-type=tif --out-depth=16 --wb=auto --silent --overwrite --output="$DIR/img" "${images[0]}"
+    if [ ! -z "$AUTOBB" ]; then
+        if [ ! -f "$ufraw_config" ]; then
+            $UFRAW_BATCH --create-id=only --out-type=tif --out-depth=16 --wb=auto --silent --overwrite --output="$DIR/img" "${images[0]}"
+        fi
+        
+        local temp=`grep Temperature "$ufraw_config" | grep -P '[\d.]+' -o`
+        local green=`grep Green "$ufraw_config" | grep -P '[\d.]+' -o`
+        rm "$ufraw_config"
+        
+        wb="--temperature=$temp --green=$green"
+    else
+        if [ -f "$ufraw_config" ]; then
+            local temp=`grep Temperature "$ufraw_config" | grep -P '[\d.]+' -o`
+            local green=`grep Green "$ufraw_config" | grep -P '[\d.]+' -o`
+            
+            wb="--temperature=$temp --green=$green"
+        else
+            wb="--wb=camera"
+        fi
+    fi
     
-    local temp=`grep Temperature "$ufraw_config" | grep -P '[\d.]+' -o`
-    local green=`grep Green "$ufraw_config" | grep -P '[\d.]+' -o`
-    rm "$ufraw_config"
-    
-    $UFRAW_BATCH --temperature=$temp --green=$green --out-path="$TIF_DIR" --out-type=tif --out-depth=16 --create-id=no \
-        --zip --silent --overwrite "$DIR"/*.$EXTENSION
+    $UFRAW_BATCH $wb --out-path="$TIF_DIR" --out-type=tif --out-depth=16 --create-id=no \
+            --zip --silent --overwrite "$DIR"/*.$EXTENSION
 }
+
+if [ ! -z "$FORCE" -a -f "$DIR/._converted" ]; then
+    rm "$DIR/._converted"
+fi
 
 if [ -f "$DIR/._converted" ]; then
     echo "Файлы в каталоге '$DIR' уже сконвертированы. Пропускаем."
@@ -98,4 +140,4 @@ else
 fi
 
 # И сразу сведем брекетинг уже из TIFF`ов
-"$BLEND_BRACKETED_BIN" "$TIF_DIR" "tif"
+"$BLEND_BRACKETED_BIN" -f "$TIF_DIR" "tif"

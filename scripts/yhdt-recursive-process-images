@@ -6,6 +6,32 @@
 SELF="`basename $0`"
 SELF_PATH="`dirname $0`"
 
+usage() {
+    echo "USAGE: $SELF [-f] [-w] <path> <extension>"
+    echo -e "Options:"
+    echo -e "\t-f Принудительно сконвертировать (даже если каталог отмечен, как сконвертированный)"
+    echo -e "\t-w Автоматически определять баланс белого каталога"
+    echo "Params:"
+    echo -e "\t <path>\tпуть к каталогу с RAW-файлами (ex. /home/user/dir1/), not a file name"
+    echo -e "\t <extension>\tрасширение RAW-файлов в каталоге (ex. CR2)"
+}
+
+i=0
+_agrs=()
+for arg in "$@"; do
+    _agrs[$i]="$arg"
+    i=$((i + 1))
+done
+
+while getopts "fw" Option; do
+    case $Option in
+            f ) FORCE="-f";;
+            w ) AUTOBB="-w";;
+            * ) echo "[!] Invalid option" && usage && exit 1;;
+    esac
+done
+shift $(($OPTIND - 1))
+
 . "$SELF_PATH/functions.sh"
 
 DIR="$1"
@@ -17,18 +43,15 @@ DIR_CONVERT_BIN="$SELF_PATH/yhdt-convert-directory"
 IFS=$'\n'
 
 if [ -z "$DIR" ]; then
-    echo "Укажите каталог с файлами"
-    exit
+    echo "Укажите каталог с файлами" && usage && exit 1
 fi
 
 if [ ! -d "$DIR" ]; then
-    echo "$DIR не является директорией"
-    exit
+    echo "$DIR не является директорией" && usage && exit 1
 fi
 
 if [ -z "$EXTENSION" ]; then
-    echo "Укажите расширение файлов"
-    exit
+    echo "Укажите расширение файлов" && usage && exit 1
 fi
 
 DIR=$(cd "$DIR" && pwd) #transform to absolute path
@@ -74,7 +97,7 @@ walkDirs() {
         cr_count=`find "$directory" -maxdepth 1 -type f -iname "*.$extension" -print | wc -l`
         
         if [ ! "$cr_count" -eq 0 ]; then
-            "$DIR_CONVERT_BIN" "$directory" "$extension"
+            "$DIR_CONVERT_BIN" $FORCE $AUTOBB "$directory" "$extension"
         fi
     done
 }

@@ -1,0 +1,25 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=KonqPopupMenu/Plugin
+MimeType=inode/directory;x-directory/normal;
+Actions=convert-dir-bb;convert-dir;blend;
+X-KDE-Priority=TopLevel
+X-KDE-Submenu=RAW
+Icon=luna
+Encoding=UTF-8
+Name=Работа с исходниками
+
+[Desktop Action convert-dir-bb]
+Exec=konsole -e /opt/krpanotools/scripts/yhdt-convert-directory -w -f %f CR2
+Name[ru]=Конвертировать каталог (авто ББ)
+Name=Convert directory (auto WB)
+
+[Desktop Action convert-dir]
+Exec=konsole -e /opt/krpanotools/scripts/yhdt-convert-directory -f %f CR2
+Name[ru]=Конвертировать каталог
+Name=Convert directory
+
+[Desktop Action blend]
+Exec=konsole -e /opt/krpanotools/scripts/yhdt-blend-bracketed -f %f tif
+Name[ru]=Свести брэкетинг в каталоге
+Name=Blend bracketed images
