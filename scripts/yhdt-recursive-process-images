@@ -4,7 +4,7 @@
 
 
 SELF="`basename $0`"
-SELF_PATH="`dirname $0`"
+SELF_PATH=$(cd "`dirname $0`" && pwd)
 
 usage() {
     echo "USAGE: $SELF [-f] [-w] <path> <extension>"
