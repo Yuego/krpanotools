@@ -23,7 +23,7 @@ done
 
 while getopts "fw" Option; do
     case $Option in
-            f ) FORCE="1";;
+            f ) FORCE="-f";;
             w ) AUTOBB="1";;
             * ) echo "[!] Invalid option" && usage && exit 1;;
     esac
