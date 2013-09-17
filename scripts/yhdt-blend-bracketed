@@ -182,51 +182,57 @@ processFileType() {
         while [ $images_index -lt $(($bracket_count-1)) ]; do
             if [ ! $((10#${bracketed_images_numbers[$images_index]} + 1)) = $(( 10#${bracketed_images_numbers[$(($images_index+1))]} )) ]; then
                 bracketed_images_sequence="NO"
-                images_index=$bracketCount
+                images_index=$bracket_count
             fi
             let "images_index = $images_index + 1"
         done
         
         if [ $VERBOSE = 1 ]; then
             echo $bracketed_images_sequence
-            echo -n "Checking exposures of images ${bracketed_images_numbers[@]} ... "
         fi
         
-        images_index=1
-        photos_count=$(( $bracket_count / 2 ))
+        if [ "$bracketed_images_sequence" = "YES" ]; then
         
-        exp0="${exposures[$index]}"
-        while [ $images_index -lt $(($photos_count+1)) ]; do
-            exp1="${exposures[$(($index+$images_index))]}"
-            exp2="${exposures[$(($index+$bracket_count-$images_index))]}"
-            
-            if [ ! `echo "($exp0 - $exp1) == ($exp2 - $exp0)" | bc -q` = 1 ]; then
-                bracketed_exposures_sequence="NO"
+            if [ $VERBOSE = 1 ]; then
+                echo -n "Checking exposures of images ${bracketed_images_numbers[@]} ... "
             fi
             
-            let "images_index = $images_index + 1"
-        done
-        
-        if [ $VERBOSE = 1 ]; then
-            echo $bracketed_exposures_sequence
-        fi
-        
-        if [ "$bracketed_exposures_sequence" = "YES" ]; then
-            if [ "$DRYRUN" = "N" ]; then # if for real
-                images_index=0
-                blend_params=()
-                while [ $images_index -lt $bracket_count ]; do
-                    blend_params=( "${blend_params[@]}" "${bracketed[$(($index+$images_index))]}" )
-                    let "images_index = $images_index + 1"
-                done
-                blendTifFiles ${blend_params[@]} #blend bracketed
-                if [ ! $? -eq $E_NO_ERR ]; then
-                    has_errors=$?
+            images_index=1
+            photos_count=$(( $bracket_count / 2 ))
+            
+            exp0="${exposures[$index]}"
+            while [ $images_index -lt $(($photos_count+1)) ]; do
+                exp1="${exposures[$(($index+$images_index))]}"
+                exp2="${exposures[$(($index+$bracket_count-$images_index))]}"
+                
+                if [ ! `echo "($exp0 - $exp1) == ($exp2 - $exp0)" | bc -q` = 1 ]; then
+                    bracketed_exposures_sequence="NO"
                 fi
+                
+                let "images_index = $images_index + 1"
+            done
+            
+            if [ $VERBOSE = 1 ]; then
+                echo $bracketed_exposures_sequence
             fi
-            let "index = $index + $bracket_count"
-        else
-            let "index = $index + 1"
+            
+            if [ "$bracketed_exposures_sequence" = "YES" ]; then
+                if [ "$DRYRUN" = "N" ]; then # if for real
+                    images_index=0
+                    blend_params=()
+                    while [ $images_index -lt $bracket_count ]; do
+                        blend_params=( "${blend_params[@]}" "${bracketed[$(($index+$images_index))]}" )
+                        let "images_index = $images_index + 1"
+                    done
+                    blendTifFiles ${blend_params[@]} #blend bracketed
+                    if [ ! $? -eq $E_NO_ERR ]; then
+                        has_errors=$?
+                    fi
+                fi
+                let "index = $index + $bracket_count"
+            else
+                let "index = $index + 1"
+            fi
         fi
     done
     
