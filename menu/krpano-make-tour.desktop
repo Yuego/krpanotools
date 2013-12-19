@@ -10,7 +10,7 @@ Icon=luna
 Name=Создать 3Д-тур из выделенных панорам
 
 [Desktop Action createTour]
-Exec=konsole -e /opt/krpanotools/bin/kmakemultires -config=/opt/krpanotools/templates/build/vtour-build.config %F
+Exec=konsole --hide-menubar --hide-tabbar --nofork -e /opt/krpanotools/bin/kmakemultires -config=/opt/krpanotools/templates/build/vtour-build.config %F
 Icon=/opt/krpanotools/images/krpano.png
 Name[ru]=Создать тур
 Name=Создать тур
