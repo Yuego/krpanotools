@@ -1,13 +1,14 @@
 [Desktop Entry]
+Version=1.0
 Type=Service
 ServiceTypes=KonqPopupMenu/Plugin
+StartupNotify=false
+
 MimeType=image/tiff;image/png;image/jpeg;
 Actions=toCube;toSphere;
 X-KDE-Priority=TopLevel
 X-KDE-Submenu=Krpano
-Encoding=UTF-8
 Icon=/opt/krpanotools/images/convert.png
-Name=Конвертирование панорам
 
 [Desktop Action toCube]
 Exec=konsole -e /opt/krpanotools/bin/ktransform -config=/opt/krpanotools/config/ktransform.config %f

@@ -1,12 +1,16 @@
 [Desktop Entry]
-Actions=resize;
-Encoding=UTF-8
+Version=1.0
+Type=Service
+ServiceTypes=KonqPopupMenu/Plugin
+StartupNotify=false
+
 Icon=/opt/krpanotools/images/resize.png
 MimeType=image/tiff;image/png;image/jpeg;
-ServiceTypes=KonqPopupMenu/Plugin
-Type=Service
+Actions=resize;
+
 X-KDE-Priority=TopLevel
 X-KDE-Submenu=ImageMagick
+
 
 [Desktop Action resize]
 Exec=/bin/bash -c "/opt/krpanotools/scripts/yhdt-create-preview '%f'"

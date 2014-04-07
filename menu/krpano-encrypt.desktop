@@ -1,13 +1,14 @@
 [Desktop Entry]
+Version=1.0
 Type=Service
 ServiceTypes=KonqPopupMenu/Plugin
+StartupNotify=false
+
 MimeType=application/xml;application/javascript;
 Actions=encrypt;encryptOW;
 X-KDE-Priority=TopLevel
 X-KDE-Submenu=Krpano
 Icon=luna
-Encoding=UTF-8
-Name=Шифрование xml
 
 [Desktop Action encrypt]
 Exec=konsole -e /opt/krpanotools/bin/kencrypt -h5 %F

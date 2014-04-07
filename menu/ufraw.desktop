@@ -1,4 +1,3 @@
-#!/usr/bin/env xdg-open
 [Desktop Entry]
 Name=UFRAW
 Type=Application
@@ -11,4 +10,3 @@ StartupNotify=true
 MimeType=image/x-dcraw;
 
 Icon=ufraw
-
