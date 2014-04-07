@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Ресайзим изображение и сохраняем результат в preview.jpg
+
+
+SELF="`basename $0`"
+SELF_PATH=$(cd "`dirname $0`" && pwd)
+
+CONVERT=`which convert`
+
+FILE_NAME="$1"
+FILE_PATH=$(cd "`dirname "$FILE_NAME"`" && pwd)
+
+
+$CONVERT "$1" -resize 1024 -modulate 100,140 "$FILE_PATH/preview.jpg";
