@@ -8,7 +8,12 @@ SELF_PATH=$(cd "`dirname $0`" && pwd)
 
 CONVERT=`which convert`
 
-for f in $@; do
+SAVE_IFS=$IFS
+IFS=$(echo -en "\n\b")
+
+FILES=`echo $@ | sed -r 's#[\t ]+/#\n/#g'`
+
+for f in $FILES; do
     echo $f
     BASE_NAME=`basename "$f"`
     FILE_PATH=$(cd "`dirname "$f"`" && pwd)
@@ -16,3 +21,5 @@ for f in $@; do
     $CONVERT "$f" -quality 85% "$FILE_PATH/jpg_$BASE_NAME.jpg";
 
 done
+
+IFS=$SAVE_IFS
