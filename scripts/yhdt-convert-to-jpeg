@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Ресайзим изображение и сохраняем результат в preview.jpg
+
+
+SELF="`basename $0`"
+SELF_PATH=$(cd "`dirname $0`" && pwd)
+
+CONVERT=`which convert`
+
+for f in $@; do
+    echo $f
+    BASE_NAME=`basename "$f"`
+    FILE_PATH=$(cd "`dirname "$f"`" && pwd)
+
+    $CONVERT "$f" -quality 85% "$FILE_PATH/jpg_$BASE_NAME.jpg";
+
+done

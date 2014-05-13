@@ -6,7 +6,7 @@ StartupNotify=false
 
 Icon=/opt/krpanotools/images/resize.png
 MimeType=image/tiff;image/png;image/jpeg;
-Actions=resize;
+Actions=resize;convertPanoToJPG
 
 X-KDE-Priority=TopLevel
 X-KDE-Submenu=ImageMagick
@@ -17,3 +17,8 @@ Exec=/bin/bash -c "/opt/krpanotools/scripts/yhdt-create-preview '%f'"
 Icon=/opt/krpanotools/images/images.png
 Name[ru]=Превью
 Name=Resize
+
+[Desktop Action convertPanoToJPG]
+Exec=/bin/bash -c "/opt/krpanotools/scripts/yhdt-convert-to-jpeg %F"
+Name[ru]=Пережать в JPEG
+Name=Recompress to JPEG
