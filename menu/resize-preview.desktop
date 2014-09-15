@@ -6,7 +6,7 @@ StartupNotify=false
 
 Icon=/opt/krpanotools/images/resize.png
 MimeType=image/tiff;image/png;image/jpeg;
-Actions=resize;convertPanoToJPG
+Actions=resize;convertPanoToJPG;rotateCW;rotateCCW
 
 X-KDE-Priority=TopLevel
 X-KDE-Submenu=ImageMagick
@@ -18,7 +18,14 @@ Icon=/opt/krpanotools/images/images.png
 Name[ru]=Превью
 Name=Resize
 
-[Desktop Action convertPanoToJPG]
-Exec=/bin/bash -c "/opt/krpanotools/scripts/yhdt-convert-to-jpeg %F"
-Name[ru]=Пережать в JPEG
-Name=Recompress to JPEG
+[Desktop Action rotateCW]
+Exec=/bin/bash -c "convert '%f' -rotate 90 '%f_tmp'; exiftool -TagsFromFile '%f' '%f_tmp' -overwrite_original; mv '%f_tmp' '%f'"
+Icon=/opt/krpanotools/images/krpano-transform-r.png
+Name[ru]=Повернуть по часовой стрелке
+Name=Rotate clockwise
+
+[Desktop Action rotateCCW]
+Exec=/bin/bash -c "convert '%f' -rotate 270 '%f_tmp'; exiftool -TagsFromFile '%f' '%f_tmp' -overwrite_original; mv '%f_tmp' '%f'"
+Icon=/opt/krpanotools/images/krpano-transform-l.png
+Name[ru]=Повернуть против часовой стрелки
+Name=Rotate counter clockwise
