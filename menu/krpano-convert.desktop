@@ -5,10 +5,11 @@ ServiceTypes=KonqPopupMenu/Plugin
 StartupNotify=false
 
 MimeType=image/tiff;image/png;image/jpeg;
-Actions=toCube;toSphere;toSphereFinal
+Actions=toCube;toSphere;toSphereFinal;createTour;
 X-KDE-Priority=TopLevel
 X-KDE-Submenu=Krpano
 Icon=/opt/krpanotools/images/convert.png
+
 
 [Desktop Action toCube]
 Exec=konsole -e /opt/krpanotools/bin/ktransform -config=/opt/krpanotools/config/ktransform.config %f
@@ -27,3 +28,11 @@ Exec=konsole -e /opt/krpanotools/bin/kcube2sphere -config=/opt/krpanotools/confi
 Icon=/opt/krpanotools/images/krpano-transform-l.png
 Name[ru]=Куб в сферу (JPEG)
 Name=Куб в сферу (JPEG)
+
+[Desktop Action createTour]
+Exec=konsole --hide-menubar --hide-tabbar --nofork -e /opt/krpanotools/bin/kmakemultires -config=/opt/krpanotools/templates/build/vtour-build.config %F
+Icon=/opt/krpanotools/images/krpano.png
+Name[ru]=Создать тур
+Name=Создать тур
+Comment[ru]=Создать 3Д-тур из одной или нескольких панорам
+Comment=Создать 3Д-тур из одной или нескольких панорам

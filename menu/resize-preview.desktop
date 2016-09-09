@@ -6,7 +6,7 @@ StartupNotify=false
 
 Icon=/opt/krpanotools/images/resize.png
 MimeType=image/tiff;image/png;image/jpeg;
-Actions=resize;convertPanoToJPG;rotateCW;rotateCCW
+Actions=resize;rotateCW;rotateCCW
 
 X-KDE-Priority=TopLevel
 X-KDE-Submenu=ImageMagick
