@@ -8,7 +8,7 @@ MimeType=application/xml;application/javascript;
 Actions=encrypt;encryptOW;
 X-KDE-Priority=TopLevel
 X-KDE-Submenu=Krpano
-Icon=luna
+Icon=/opt/krpano/images/krpano.png
 
 [Desktop Action encrypt]
 Exec=konsole -e krpano encrypt -h5 %F
