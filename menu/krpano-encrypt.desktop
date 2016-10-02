@@ -11,13 +11,13 @@ X-KDE-Submenu=Krpano
 Icon=luna
 
 [Desktop Action encrypt]
-Exec=konsole -e /opt/krpanotools/bin/kencrypt -h5 %F
-Icon=/opt/krpanotools/images/krpano-encrypt.png
+Exec=konsole -e krpano encrypt -h5 %F
+Icon=/opt/krpano/images/krpano-encrypt.png
 Name[ru]=Зашифровать
 Name=Encrypt
 
 [Desktop Action encryptOW]
-Exec=konsole -e /opt/krpanotools/bin/kencrypt -ow -h5 %F
-Icon=/opt/krpanotools/images/krpano-encrypt-ow.png
+Exec=konsole -e krpano encrypt -ow -h5 %F
+Icon=/opt/krpano/images/krpano-encrypt-ow.png
 Name[ru]=Зашифровать (с перезаписью)
 Name=Encrypt (owerwrite)

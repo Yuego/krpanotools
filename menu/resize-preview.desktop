@@ -4,7 +4,7 @@ Type=Service
 ServiceTypes=KonqPopupMenu/Plugin
 StartupNotify=false
 
-Icon=/opt/krpanotools/images/resize.png
+Icon=/opt/krpano/images/resize.png
 MimeType=image/tiff;image/png;image/jpeg;
 Actions=resize;rotateCW;rotateCCW
 
@@ -13,19 +13,19 @@ X-KDE-Submenu=ImageMagick
 
 
 [Desktop Action resize]
-Exec=/bin/bash -c "/opt/krpanotools/scripts/yhdt-create-preview '%f'"
-Icon=/opt/krpanotools/images/images.png
+Exec=/bin/bash -c "/opt/krpano/scripts/yhdt-create-preview '%f'"
+Icon=/opt/krpano/images/images.png
 Name[ru]=Превью
 Name=Resize
 
 [Desktop Action rotateCW]
 Exec=/bin/bash -c "convert '%f' -rotate 90 '%f_tmp'; exiftool -TagsFromFile '%f' '%f_tmp' -overwrite_original; mv '%f_tmp' '%f'"
-Icon=/opt/krpanotools/images/krpano-transform-r.png
+Icon=/opt/krpano/images/krpano-transform-r.png
 Name[ru]=Повернуть по часовой стрелке
 Name=Rotate clockwise
 
 [Desktop Action rotateCCW]
 Exec=/bin/bash -c "convert '%f' -rotate 270 '%f_tmp'; exiftool -TagsFromFile '%f' '%f_tmp' -overwrite_original; mv '%f_tmp' '%f'"
-Icon=/opt/krpanotools/images/krpano-transform-l.png
+Icon=/opt/krpano/images/krpano-transform-l.png
 Name[ru]=Повернуть против часовой стрелки
 Name=Rotate counter clockwise

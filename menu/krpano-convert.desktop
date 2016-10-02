@@ -8,23 +8,23 @@ MimeType=image/tiff;image/png;image/jpeg;
 Actions=toCube;toSphere;toSphereFinal;
 X-KDE-Priority=TopLevel
 X-KDE-Submenu=Krpano
-Icon=/opt/krpanotools/images/convert.png
+Icon=/opt/krpano/images/convert.png
 
 
 [Desktop Action toCube]
-Exec=konsole -e /opt/krpanotools/bin/ktransform -config=/opt/krpanotools/config/ktransform.config %f
-Icon=/opt/krpanotools/images/krpano-transform-r.png
+Exec=konsole -e krpano transform -config=/opt/krpano/config/ktransform.config %f
+Icon=/opt/krpano/images/krpano-transform-r.png
 Name[ru]=Сфера в куб
 Name=Сфера в куб
 
 [Desktop Action toSphere]
-Exec=konsole -e /opt/krpanotools/bin/kcube2sphere -config=/opt/krpanotools/config/ktransform.config %F
-Icon=/opt/krpanotools/images/krpano-transform-l.png
+Exec=konsole -e krpano cube2sphere -config=/opt/krpano/config/ktransform.config %F
+Icon=/opt/krpano/images/krpano-transform-l.png
 Name[ru]=Куб в сферу
 Name=Куб в сферу
 
 [Desktop Action toSphereFinal]
-Exec=konsole -e /opt/krpanotools/bin/kcube2sphere -config=/opt/krpanotools/config/ktransform_final.config %F
-Icon=/opt/krpanotools/images/krpano-transform-l.png
+Exec=konsole -e krpano cube2sphere -config=/opt/krpano/config/ktransform_final.config %F
+Icon=/opt/krpano/images/krpano-transform-l.png
 Name[ru]=Куб в сферу (JPEG)
 Name=Куб в сферу (JPEG)
